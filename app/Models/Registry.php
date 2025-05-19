@@ -1,0 +1,29 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Registry extends Model
+{
+    protected $table = 'registry';
+
+    protected $fillable = [
+        'surname',
+        'given_name',
+        'nationality',
+        'country_of_residence',
+        'document_type',
+        'document_no',
+        'dob',
+        'age',
+        'sex',
+        'travel_date',
+        'direction',
+        'accommodation_address',
+        'note',
+        'travel_reason',
+        'border_post', // Corrected from border_post Vila
+        'destination_coming_from',
+    ];
+}
