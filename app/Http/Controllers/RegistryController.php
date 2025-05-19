@@ -6,6 +6,7 @@ use App\Models\Registry;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Redirect;
 
 class RegistryController extends Controller
 {
@@ -35,7 +36,7 @@ class RegistryController extends Controller
      */
     public function create()
     {
-        //
+        // Not implemented yet
     }
 
     /**
@@ -43,7 +44,7 @@ class RegistryController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        // Not implemented yet
     }
 
     /**
@@ -51,17 +52,9 @@ class RegistryController extends Controller
      */
     public function show(string $id)
     {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
         try {
             $registry = Registry::findOrFail($id);
-            return Inertia::render('registry/edit', [
+            return Inertia::render('registry/show', [
                 'registry' => $registry,
                 'auth' => [
                     'user' => auth()->user() ? auth()->user()->only(['id', 'name', 'email', 'avatar']) : null,
@@ -76,11 +69,20 @@ class RegistryController extends Controller
     }
 
     /**
+     * Show the form for editing the specified resource.
+     */
+    public function edit(string $id)
+    {
+        // Not implemented yet
+    }
+
+    /**
      * Update the specified resource in storage.
      */
     public function update(Request $request, string $id)
     {
         try {
+            \Log::info('Update request data:', $request->all());
             $registry = Registry::findOrFail($id);
             $validated = $request->validate([
                 'surname' => 'required|string|max:255',
@@ -100,10 +102,12 @@ class RegistryController extends Controller
                 'border_post' => 'required|string|max:255',
                 'destination_coming_from' => 'required|string|max:255',
             ]);
+            \Log::info('Validated data:', $validated);
             $registry->update($validated);
+            \Log::info('Record updated:', $registry->toArray());
             return Redirect::route('registry.index')->with('success', 'Record updated successfully.');
         } catch (\Exception $e) {
-            Log::error('Error updating registry record: ' . $e->getMessage());
+            \Log::error('Error updating registry record: ' . $e->getMessage());
             return Inertia::render('Error', [
                 'message' => 'Unable to update registry record.',
             ]);
@@ -115,13 +119,6 @@ class RegistryController extends Controller
      */
     public function destroy(string $id)
     {
-        try {
-            $registry = Registry::findOrFail($id);
-            $registry->delete();
-            return response()->json(['message' => 'Record deleted successfully.']);
-        } catch (\Exception $e) {
-            Log::error('Error deleting registry record: ' . $e->getMessage());
-            return response()->json(['message' => 'Unable to delete registry record.'], 500);
-        }
+        // Not implemented yet
     }
 }

@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import { useReactTable, getCoreRowModel, getSortedRowModel, type ColumnDef } from '@tanstack/react-table';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type User } from '@/types';
@@ -55,40 +55,6 @@ export default function Registry({ auth, registry }: Props) {
             { header: 'Accommodation Address', accessorKey: 'accommodation_address', enableSorting: true },
             { header: 'Travel Reason', accessorKey: 'travel_reason', enableSorting: true },
             { header: 'Destination/Coming From', accessorKey: 'destination_coming_from', enableSorting: true },
-            {
-                header: 'Actions',
-                id: 'actions',
-                cell: ({ row }) => {
-                    const id = row.original.id;
-                    if (!id) {
-                        console.error('Missing ID for row:', row.original);
-                        return <span>No ID</span>;
-                    }
-                    return (
-                        <div className="flex space-x-2">
-                            <Link
-                                href={`/registry/${id}/edit`}
-                                className="text-blue-600 hover:text-blue-800 font-medium"
-                            >
-                                Edit
-                            </Link>
-                            <button
-                                onClick={() => {
-                                    if (window.confirm('Are you sure you want to delete this record?')) {
-                                        router.delete(`/registry/${id}`, {
-                                            onSuccess: () => window.alert('Record deleted successfully.'),
-                                            onError: () => window.alert('Failed to delete record.'),
-                                        });
-                                    }
-                                }}
-                                className="text-red-600 hover:text-red-800 font-medium"
-                            >
-                                Delete
-                            </button>
-                        </div>
-                    );
-                },
-            },
         ],
         []
     );
@@ -126,14 +92,12 @@ export default function Registry({ auth, registry }: Props) {
                                             onClick={header.column.getToggleSortingHandler()}
                                         >
                                             {header.isPlaceholder ? null : header.column.columnDef.header}
-                                            {header.column.getCanSort() && (
-                                                <span>
-                                                        {{
-                                                            asc: ' 🔼',
-                                                            desc: ' 🔽',
-                                                        }[header.column.getIsSorted() as string] ?? ''}
-                                                    </span>
-                                            )}
+                                            <span>
+                                                    {{
+                                                        asc: ' 🔼',
+                                                        desc: ' 🔽',
+                                                    }[header.column.getIsSorted() as string] ?? ''}
+                                                </span>
                                         </th>
                                     ))}
                                 </tr>
@@ -141,15 +105,21 @@ export default function Registry({ auth, registry }: Props) {
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
                             {table.getRowModel().rows.map(row => (
-                                <tr key={row.id}>
+                                <tr
+                                    key={row.id}
+                                    className="hover:bg-gray-50 cursor-pointer"
+                                >
                                     {row.getVisibleCells().map(cell => (
                                         <td
                                             key={cell.id}
                                             className="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
                                         >
-                                            {cell.column.id === 'actions'
-                                                ? cell.getValue()
-                                                : cell.getValue() ? String(cell.getValue()) : 'N/A'}
+                                            <Link
+                                                href={`/registry/${row.original.id}`}
+                                                className="block w-full h-full"
+                                            >
+                                                {cell.getValue() ? String(cell.getValue()) : 'N/A'}
+                                            </Link>
                                         </td>
                                     ))}
                                 </tr>
