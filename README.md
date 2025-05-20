@@ -1,43 +1,46 @@
 # **Vanuatu Labour Registry**
 
-The **Vanuatu Labour Registry** is a web application designed to manage labour movement data for the Vanuatu government. It offers a modern interface to view, search, and update registry records, built with robust web technologies for scalability and ease of use.
+The **Vanuatu Labour Registry** is a sophisticated, full-stack web application engineered to streamline labour movement data management for the Vanuatu government. Leveraging an isomorphic **React JS** frontend with **Inertia.js** and a robust **Laravel** backend, it delivers a seamless, single-page application (SPA) experience with server-side hydration. The application empowers users with real-time data querying, dynamic record manipulation, and a responsive, modern interface, underpinned by cutting-edge technologies and best practices.
 
 ## **Table of Contents**
 - [Features](#features)
-- [Technologies](#technologies)
+- [Technology Stack](#technology-stack)
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
 - [Usage](#usage)
-- [Project Structure](#project-structure)
+- [Project Architecture](#project-architecture)
 - [Database Schema](#database-schema)
 - [Contributing](#contributing)
 - [License](#license)
 - [Contact](#contact)
 
 ## **Features**
-- **Instant Search**: Filter registry records in real-time across displayed columns (`surname`, `given_name`, `dob`, `sex`, `travel_date`, `direction`, `travel_reason`, `destination_coming_from`).
-- **Interactive Data Table**: View registry data with sortable columns and clickable rows to access detailed records.
-- **Record Editing**: Update all 16 registry fields via an intuitive form, with an `Update` button appearing on changes.
-- **Responsive Design**: Styled with **Tailwind CSS** for a mobile-friendly experience.
-- **Secure Authentication**: **Laravel** authentication with middleware for protected routes.
-- **Error Handling**: Comprehensive error pages and logging for database and validation issues.
+- **Real-Time Global Search**: Implements a reactive, client-side filtering mechanism using **`@tanstack/react-table`**, enabling instant querying across 8 displayed columns (`surname`, `given_name`, `dob`, `sex`, `travel_date`, `direction`, `travel_reason`, `destination_coming_from`).
+- **Dynamic Data Grid**: A sortable, interactive table with row-level navigation to detailed views, powered by **React JS** and **TypeScript** for type-safe data rendering.
+- **Comprehensive Record Management**: Facilitates CRUD operations with a form-driven interface for editing all 16 registry fields, featuring reactive state management and conditional UI updates via **Inertia.js**.
+- **Responsive UI**: Crafted with **Tailwind CSS** for a pixel-perfect, mobile-optimized design adhering to modern UX principles.
+- **Secure Authentication**: Integrates **Laravel**’s authentication middleware with session-based security and CSRF protection for robust access control.
+- **Error Resilience**: Employs comprehensive error handling with custom error pages and **Laravel** logging for diagnostics, ensuring operational stability.
 
-## **Technologies**
-- **Backend**: **Laravel** 11 (PHP 8.2+)
-- **Frontend**: **React** 18, **TypeScript**, **Inertia.js**, **Tailwind CSS**
-- **Data Table**: `@tanstack/react-table` v8
-- **Build Tool**: **Vite** 6.2.0
-- **Database**: **MySQL**
-- **Environment**: **XAMPP** (Windows)
+## **Technology Stack**
+- **Backend Framework**: **Laravel** 11, a PHP framework with Eloquent ORM for seamless database interactions and RESTful API routing.
+- **Frontend Library**: **React JS** 18, utilizing functional components and hooks for reactive UI development.
+- **Server-Side Rendering Bridge**: **Inertia.js**, enabling SPA-like experiences with server-driven rendering, eliminating traditional API overhead.
+- **Type Safety**: **TypeScript**, enforcing static typing for maintainable and scalable frontend code.
+- **Styling**: **Tailwind CSS**, a utility-first CSS framework for rapid, responsive design.
+- **Data Table Engine**: **`@tanstack/react-table` v8**, providing advanced table functionalities like sorting and filtering.
+- **Build Orchestration**: **Vite** 6.2.0, a next-generation bundler for lightning-fast development and production builds.
+- **Database**: **MySQL**, managed via **Laravel** migrations for schema consistency.
+- **Environment**: **XAMPP**, hosting **Apache** and **MySQL** for local development on Windows.
 
 ## **Prerequisites**
 - **PHP**: 8.2 or higher
-- **Composer**: Latest version
+- **Composer**: Latest version for dependency management
 - **Node.js**: 18.x or higher
 - **npm**: 8.x or higher
 - **MySQL**: 8.0 or higher
-- **XAMPP**: Configured with Apache and MySQL
-- **Git**: For cloning the repository
+- **XAMPP**: Configured with **Apache** and **MySQL**
+- **Git**: For repository cloning
 
 ## **Installation**
 1. **Clone the Repository**
@@ -61,7 +64,7 @@ The **Vanuatu Labour Registry** is a web application designed to manage labour m
      ```bash
      cp .env.example .env
      ```
-   - Update `.env` with your database credentials:
+   - Update `.env` with **MySQL** credentials:
      ```env
      DB_CONNECTION=mysql
      DB_HOST=127.0.0.1
@@ -70,7 +73,7 @@ The **Vanuatu Labour Registry** is a web application designed to manage labour m
      DB_USERNAME=root
      DB_PASSWORD=
      ```
-   - Generate an application key:
+   - Generate **Laravel** application key:
      ```bash
      php artisan key:generate
      ```
@@ -141,26 +144,26 @@ The **Vanuatu Labour Registry** is a web application designed to manage labour m
      ```
 
 9. **Access the Application**
-   - Open `http://localhost:8000` in your browser.
+   - Navigate to `http://localhost:8000`.
    - Register or log in to access the dashboard and registry.
 
 ## **Usage**
-1. **View Registry Data**
-   - Navigate to `/registry` via the sidebar ("View Data").
-   - Use the search input to filter records instantly (e.g., type `Doe` or `2025-05`).
-   - Sort columns by clicking headers (e.g., `Surname`).
-   - Click a row to view/edit a record.
+1. **Query Registry Data**
+   - Access `/registry` via the **AppSidebar.tsx** navigation ("View Data").
+   - Utilize the instant search input, powered by **`@tanstack/react-table`**, to filter records (e.g., `Doe`, `2025-05`).
+   - Sort columns by clicking headers (e.g., `Surname`) for dynamic data ordering.
+   - Click rows to navigate to `/registry/{id}` for detailed views.
 
-2. **Edit Records**
-   - On `/registry/{id}`, view all 16 fields in input fields.
-   - Edit any field; an `Update` button appears when changes are made.
-   - Click `Update` to save changes (note: if updates fail, check logs).
-   - Click `Back` to return to `/registry`.
+2. **Manage Records**
+   - On `/registry/{id}`, edit all 16 fields using a **React JS** form with **Inertia.js** form handling.
+   - Changes trigger a reactive `Update` button, leveraging **TypeScript** for type-safe state management.
+   - Submit updates via **Inertia.js** `PUT` requests to **Laravel**’s `RegistryController`.
+   - Use the `Back` button to return to `/registry`.
 
-3. **Troubleshooting**
-   - **Unresponsive UI**: If the app freezes after updating, check browser console (F12) and `storage/logs/laravel.log`.
-   - **Database Issues**: Verify migrations and `.env` settings.
-   - **Build Errors**: Clear caches and rebuild:
+3. **Diagnostics**
+   - **UI Issues**: If the app becomes unresponsive post-update, inspect the browser console (F12) and `storage/logs/laravel.log` for **Laravel** or **React JS** errors.
+   - **Database Errors**: Validate **MySQL** migrations and `.env` configuration.
+   - **Build Failures**: Clear caches and rebuild:
      ```bash
      php artisan cache:clear
      php artisan config:clear
@@ -170,7 +173,7 @@ The **Vanuatu Labour Registry** is a web application designed to manage labour m
      npm run build
      ```
 
-## **Project Structure**
+## **Project Architecture**
 ```
 vanuatu-labour-registry/
 ├── app/
@@ -200,13 +203,13 @@ vanuatu-labour-registry/
 └── README.md
 ```
 
-- `RegistryController.php`: Handles CRUD operations for registry records.
-- `index.tsx`: Displays searchable, sortable table with 8 columns.
-- `show.tsx`: Form for viewing/editing all 16 columns.
-- `AppSidebar.tsx`: Navigation with links to dashboard and registry.
+- `RegistryController.php`: Orchestrates CRUD operations with **Laravel**’s Eloquent ORM and **Inertia.js** responses.
+- `index.tsx`: Renders a reactive, sortable table with instant search using **React JS** and **`@tanstack/react-table`**.
+- `show.tsx`: Provides a type-safe form for editing 16 fields, integrated with **Inertia.js** for seamless server communication.
+- `AppSidebar.tsx`: Implements navigation with **React JS** components and **Inertia.js** routing.
 
 ## **Database Schema**
-The `registry` table has 16 columns:
+The `registry` table comprises 16 columns, managed via **Laravel** migrations:
 
 ```sql
 CREATE TABLE registry (
@@ -232,7 +235,7 @@ CREATE TABLE registry (
 );
 ```
 
-**Note**: Actual registry data is not shared in this repository for privacy and security reasons. To populate the database with dummy data for testing, use the `tinker` commands provided in the [Installation](#installation) section under "Seed Test Data."
+**Note**: Actual registry data is not included in this repository to ensure privacy and compliance with data protection standards. To populate the database with dummy data for development and testing, execute the **Laravel Tinker** commands provided in the [Installation](#installation) section under "Seed Test Data."
 
 ## **Contributing**
 1. Fork the repository.
@@ -240,26 +243,25 @@ CREATE TABLE registry (
    ```bash
    git checkout -b feature/your-feature
    ```
-3. Commit changes:
+3. Commit changes with descriptive messages:
    ```bash
-   git commit -m "Add your feature"
+   git commit -m "Implement your feature with Laravel and React JS"
    ```
 4. Push to the branch:
    ```bash
    git push origin feature/your-feature
    ```
-5. Open a pull request.
+5. Submit a pull request via GitHub.
 
-Please include tests and follow coding standards (**PSR-12** for PHP, **ESLint** for TypeScript).
+Contributions must adhere to **PSR-12** for **Laravel** (PHP) and **ESLint** with **TypeScript** for **React JS**. Include unit tests leveraging **PHPUnit** or **Vitest** where applicable.
 
 ## **License**
 This project is licensed under the **MIT License**. See [LICENSE](LICENSE) for details.
 
 ## **Contact**
-For support or inquiries, contact the **Vanuatu Labour Registry** team at:
-- **Email**: support@vanuatu-labour-registry.gov.vu
-- **GitHub Issues**: [Open an issue](https://github.com/your-username/vanuatu-labour-registry/issues)
+For support or inquiries, contact the **Vanuatu Labour Registry** development team:
+- **Email**: htevilili@vanuatu.gov.vu
 
 ---
 
-*Developed for the **Vanuatu Labour Registry**, May 2025*
+*Engineered for the **Vanuatu Bureau of Statistics** with **Laravel**, **React JS**, May 2025*
