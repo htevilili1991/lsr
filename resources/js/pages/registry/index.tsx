@@ -1,8 +1,8 @@
 import { Head, Link } from '@inertiajs/react';
-import { useReactTable, getCoreRowModel, getSortedRowModel, type ColumnDef } from '@tanstack/react-table';
+import { useReactTable, getCoreRowModel, getSortedRowModel, getFilteredRowModel, type ColumnDef } from '@tanstack/react-table';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type User } from '@/types';
-import React from 'react';
+import React, { useState } from 'react';
 
 // Define TypeScript interfaces
 interface Registry {
@@ -41,18 +41,18 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function Registry({ auth, registry }: Props) {
+    // State for search query
+    const [globalFilter, setGlobalFilter] = useState('');
+
     // Define columns
     const columns: ColumnDef<Registry>[] = React.useMemo(
         () => [
             { header: 'Surname', accessorKey: 'surname', enableSorting: true },
             { header: 'Given Name', accessorKey: 'given_name', enableSorting: true },
-            { header: 'Document Type', accessorKey: 'document_type', enableSorting: true },
-            { header: 'Document No.', accessorKey: 'document_no', enableSorting: true },
             { header: 'DOB', accessorKey: 'dob', enableSorting: true },
             { header: 'Sex', accessorKey: 'sex', enableSorting: true },
             { header: 'Travel Date', accessorKey: 'travel_date', enableSorting: true },
             { header: 'Direction', accessorKey: 'direction', enableSorting: true },
-            { header: 'Accommodation Address', accessorKey: 'accommodation_address', enableSorting: true },
             { header: 'Travel Reason', accessorKey: 'travel_reason', enableSorting: true },
             { header: 'Destination/Coming From', accessorKey: 'destination_coming_from', enableSorting: true },
         ],
@@ -65,6 +65,17 @@ export default function Registry({ auth, registry }: Props) {
         columns,
         getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: getSortedRowModel(),
+        getFilteredRowModel: getFilteredRowModel(),
+        state: {
+            globalFilter,
+        },
+        onGlobalFilterChange: setGlobalFilter,
+        globalFilterFn: (row, columnId, filterValue: string) => {
+            const value = row.getValue(columnId);
+            return value
+                ? String(value).toLowerCase().includes(filterValue.toLowerCase())
+                : false;
+        },
     });
 
     return (
@@ -72,6 +83,15 @@ export default function Registry({ auth, registry }: Props) {
             <Head title="Registry" />
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
                 <h3 className="text-lg font-medium mb-4">Registry Data</h3>
+                <div className="mb-4">
+                    <input
+                        type="text"
+                        value={globalFilter}
+                        onChange={e => setGlobalFilter(e.target.value)}
+                        placeholder="Search registry..."
+                        className="w-full max-w-md rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 text-sm"
+                    />
+                </div>
                 {registry?.length === 0 ? (
                     <div className="text-center py-8">
                         <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">

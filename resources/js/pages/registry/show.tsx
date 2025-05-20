@@ -259,7 +259,7 @@ export default function ShowRegistry({ auth, registry, errors }: Props) {
                             type="text"
                             value={data.border_post}
                             onChange={e => setData('border_post', e.target.value)}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                            className="mt-1 block w-full h-10 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                         />
                         {(errors.border_post || formErrors.border_post) && (
                             <p className="mt-1 text-sm text-red-600">{errors.border_post || formErrors.border_post}</p>
