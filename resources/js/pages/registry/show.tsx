@@ -92,7 +92,7 @@ export default function ShowRegistry({ auth, registry, errors }: Props) {
                             type="text"
                             value={data.surname}
                             onChange={e => setData('surname', e.target.value)}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                            className="mt-1 block w-full h-10 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                         />
                         {(errors.surname || formErrors.surname) && (
                             <p className="mt-1 text-sm text-red-600">{errors.surname || formErrors.surname}</p>
@@ -104,7 +104,7 @@ export default function ShowRegistry({ auth, registry, errors }: Props) {
                             type="text"
                             value={data.given_name}
                             onChange={e => setData('given_name', e.target.value)}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                            className="mt-1 block w-full h-10 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                         />
                         {(errors.given_name || formErrors.given_name) && (
                             <p className="mt-1 text-sm text-red-600">{errors.given_name || formErrors.given_name}</p>
@@ -116,7 +116,7 @@ export default function ShowRegistry({ auth, registry, errors }: Props) {
                             type="text"
                             value={data.nationality}
                             onChange={e => setData('nationality', e.target.value)}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                            className="mt-1 block w-full h-10 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                         />
                         {(errors.nationality || formErrors.nationality) && (
                             <p className="mt-1 text-sm text-red-600">{errors.nationality || formErrors.nationality}</p>
@@ -128,7 +128,7 @@ export default function ShowRegistry({ auth, registry, errors }: Props) {
                             type="text"
                             value={data.country_of_residence}
                             onChange={e => setData('country_of_residence', e.target.value)}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                            className="mt-1 block w-full h-10 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                         />
                         {(errors.country_of_residence || formErrors.country_of_residence) && (
                             <p className="mt-1 text-sm text-red-600">{errors.country_of_residence || formErrors.country_of_residence}</p>
@@ -140,7 +140,7 @@ export default function ShowRegistry({ auth, registry, errors }: Props) {
                             type="text"
                             value={data.document_type}
                             onChange={e => setData('document_type', e.target.value)}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring0 focus:ring-blue-500"
+                            className="mt-1 block w-full h-10 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring0 focus:ring-blue-500"
                         />
                         {(errors.document_type || formErrors.document_type) && (
                             <p className="mt-1 text-sm text-red-600">{errors.document_type || formErrors.document_type}</p>
@@ -152,7 +152,7 @@ export default function ShowRegistry({ auth, registry, errors }: Props) {
                             type="text"
                             value={data.document_no}
                             onChange={e => setData('document_no', e.target.value)}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                            className="mt-1 block w-full h-10 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                         />
                         {(errors.document_no || formErrors.document_no) && (
                             <p className="mt-1 text-sm text-red-600">{errors.document_no || formErrors.document_no}</p>
@@ -164,7 +164,7 @@ export default function ShowRegistry({ auth, registry, errors }: Props) {
                             type="date"
                             value={data.dob}
                             onChange={e => setData('dob', e.target.value)}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                            className="mt-1 block w-full h-10 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                         />
                         {(errors.dob || formErrors.dob) && (
                             <p className="mt-1 text-sm text-red-600">{errors.dob || formErrors.dob}</p>
@@ -176,7 +176,7 @@ export default function ShowRegistry({ auth, registry, errors }: Props) {
                             type="number"
                             value={data.age}
                             onChange={e => setData('age', Number(e.target.value))}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                            className="mt-1 block w-full h-10 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                         />
                         {(errors.age || formErrors.age) && (
                             <p className="mt-1 text-sm text-red-600">{errors.age || formErrors.age}</p>
@@ -188,7 +188,7 @@ export default function ShowRegistry({ auth, registry, errors }: Props) {
                             type="text"
                             value={data.sex}
                             onChange={e => setData('sex', e.target.value)}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                            className="mt-1 block w-full h-10 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                         />
                         {(errors.sex || formErrors.sex) && (
                             <p className="mt-1 text-sm text-red-600">{errors.sex || formErrors.sex}</p>
@@ -200,7 +200,7 @@ export default function ShowRegistry({ auth, registry, errors }: Props) {
                             type="date"
                             value={data.travel_date}
                             onChange={e => setData('travel_date', e.target.value)}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                            className="mt-1 block w-full h-10 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                         />
                         {(errors.travel_date || formErrors.travel_date) && (
                             <p className="mt-1 text-sm text-red-600">{errors.travel_date || formErrors.travel_date}</p>
@@ -212,7 +212,7 @@ export default function ShowRegistry({ auth, registry, errors }: Props) {
                             type="text"
                             value={data.direction}
                             onChange={e => setData('direction', e.target.value)}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                            className="mt-1 block w-full h-10 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                         />
                         {(errors.direction || formErrors.direction) && (
                             <p className="mt-1 text-sm text-red-600">{errors.direction || formErrors.direction}</p>
@@ -224,7 +224,7 @@ export default function ShowRegistry({ auth, registry, errors }: Props) {
                             type="text"
                             value={data.accommodation_address}
                             onChange={e => setData('accommodation_address', e.target.value)}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                            className="mt-1 block w-full h-10 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                         />
                         {(errors.accommodation_address || formErrors.accommodation_address) && (
                             <p className="mt-1 text-sm text-red-600">{errors.accommodation_address || formErrors.accommodation_address}</p>
@@ -247,7 +247,7 @@ export default function ShowRegistry({ auth, registry, errors }: Props) {
                             type="text"
                             value={data.travel_reason}
                             onChange={e => setData('travel_reason', e.target.value)}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                            className="mt-1 block w-full h-10 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                         />
                         {(errors.travel_reason || formErrors.travel_reason) && (
                             <p className="mt-1 text-sm text-red-600">{errors.travel_reason || formErrors.travel_reason}</p>
@@ -271,7 +271,7 @@ export default function ShowRegistry({ auth, registry, errors }: Props) {
                             type="text"
                             value={data.destination_coming_from}
                             onChange={e => setData('destination_coming_from', e.target.value)}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                            className="mt-1 block w-full h-10 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                         />
                         {(errors.destination_coming_from || formErrors.destination_coming_from) && (
                             <p className="mt-1 text-sm text-red-600">{errors.destination_coming_from || formErrors.destination_coming_from}</p>

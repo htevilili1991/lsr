@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
-import { useReactTable, getCoreRowModel, getSortedRowModel, getFilteredRowModel, type ColumnDef } from '@tanstack/react-table';
+import { useReactTable, getCoreRowModel, getSortedRowModel, getFilteredRowModel, getPaginationRowModel, type ColumnDef } from '@tanstack/react-table';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type User } from '@/types';
 import React, { useState } from 'react';
@@ -66,6 +66,12 @@ export default function Registry({ auth, registry }: Props) {
         getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: getSortedRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
+        getPaginationRowModel: getPaginationRowModel(),
+        initialState: {
+            pagination: {
+                pageSize: 10,
+            },
+        },
         state: {
             globalFilter,
         },
@@ -82,7 +88,6 @@ export default function Registry({ auth, registry }: Props) {
         <AppLayout breadcrumbs={breadcrumbs} auth={auth}>
             <Head title="Registry" />
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                <h3 className="text-lg font-medium mb-4">Registry Data</h3>
                 <div className="mb-4">
                     <input
                         type="text"
@@ -146,6 +151,50 @@ export default function Registry({ auth, registry }: Props) {
                             ))}
                             </tbody>
                         </table>
+                        <div className="flex items-center justify-between px-6 py-4">
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm text-gray-700">
+                                    Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+                                </span>
+                                <select
+                                    value={table.getState().pagination.pageSize}
+                                    onChange={e => {
+                                        table.setPageSize(Number(e.target.value));
+                                    }}
+                                    className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-1 text-sm"
+                                >
+                                    {[10, 25, 50].map(pageSize => (
+                                        <option key={pageSize} value={pageSize}>
+                                            Show {pageSize}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => table.previousPage()}
+                                    disabled={!table.getCanPreviousPage()}
+                                    className={`px-4 py-2 text-sm font-medium rounded-md ${
+                                        table.getCanPreviousPage()
+                                            ? 'bg-blue-500 text-white hover:bg-blue-600'
+                                            : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                                    }`}
+                                >
+                                    Previous
+                                </button>
+                                <button
+                                    onClick={() => table.nextPage()}
+                                    disabled={!table.getCanNextPage()}
+                                    className={`px-4 py-2 text-sm font-medium rounded-md ${
+                                        table.getCanNextPage()
+                                            ? 'bg-blue-500 text-white hover:bg-blue-600'
+                                            : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                                    }`}
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>
