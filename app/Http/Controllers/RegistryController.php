@@ -121,4 +121,83 @@ class RegistryController extends Controller
     {
         // Not implemented yet
     }
+
+    /**
+     * Display the CSV upload form.
+    */
+    public function upload()
+    {
+        try {
+            return Inertia::render('registry/Upload', [
+                'auth' => [
+                    'user' => auth()->user() ? auth()->user()->only(['id', 'name', 'email', 'avatar']) : null,
+                ],
+                'errors' => session('errors') ? session('errors')->getBag('default')->getMessages() : [],
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error rendering CSV upload page: ' . $e->getMessage());
+            return Inertia::render('registry/Error', [
+                'message' => 'Unable to load CSV upload page.',
+            ]);
+        }
+    }
+
+    /**
+     * Process and store CSV data.
+     */
+    public function storeCsv(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'csv_file' => 'required|file|mimes:csv,txt|max:2048',
+            ]);
+
+            if ($validator->fails()) {
+                return Redirect::back()->withErrors($validator);
+            }
+
+            $csv = Reader::createFromPath($request->file('csv_file')->getPathname(), 'r');
+            $csv->setHeaderOffset(0);
+
+            $expectedHeaders = [
+                'surname', 'given_name', 'nationality', 'country_of_residence',
+                'document_type', 'document_no', 'dob', 'age', 'sex',
+                'travel_date', 'direction', 'accommodation_address', 'note',
+                'travel_reason', 'border_post', 'destination_coming_from'
+            ];
+
+            $headers = $csv->getHeader();
+            if (array_diff($expectedHeaders, $headers)) {
+                return Redirect::back()->withErrors(['csv_file' => 'CSV file headers do not match expected format.']);
+            }
+
+            foreach ($csv->getRecords() as $record) {
+                Validator::make($record, [
+                    'surname' => 'required|string|max:255',
+                    'given_name' => 'required|string|max:255',
+                    'nationality' => 'required|string|max:255',
+                    'country_of_residence' => 'required|string|max:255',
+                    'document_type' => 'required|string|max:255',
+                    'document_no' => 'required|string|max:255',
+                    'dob' => 'required|date',
+                    'age' => 'required|integer|min:0',
+                    'sex' => 'required|string|max:50',
+                    'travel_date' => 'required|date',
+                    'direction' => 'required|string|max:255',
+                    'accommodation_address' => 'required|string|max:255',
+                    'note' => 'nullable|string|max:1000',
+                    'travel_reason' => 'required|string|max:255',
+                    'border_post' => 'required|string|max:255',
+                    'destination_coming_from' => 'required|string|max:255',
+                ])->validate();
+
+                Registry::create($record);
+            }
+
+            return Redirect::route('registry.upload')->with('success', 'CSV uploaded and processed successfully.');
+        } catch (\Exception $e) {
+            Log::error('CSV Upload Error: ' . $e->getMessage());
+            return Redirect::back()->withErrors(['csv_file' => 'Error processing CSV file.']);
+        }
+    }
 }

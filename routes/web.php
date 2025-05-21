@@ -12,9 +12,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', function () {
         return Inertia::render('dashboard');
     })->name('dashboard');
-});
 
-Route::resource('registry', RegistryController::class)-> middleware(['auth']);
+    // Registry resource routes
+    Route::resource('registry', RegistryController::class);
+
+    // CSV upload routes
+    Route::get('registry/upload', [RegistryController::class, 'upload'])->name('registry.upload');
+    Route::post('registry/upload', [RegistryController::class, 'storeCsv'])->name('registry.storeCsv');
+});
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
