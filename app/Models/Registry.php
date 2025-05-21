@@ -23,7 +23,7 @@ class Registry extends Model
         'accommodation_address',
         'note',
         'travel_reason',
-        'border_post', // Corrected from border_post Vila
+        'border_post',
         'destination_coming_from',
     ];
 }

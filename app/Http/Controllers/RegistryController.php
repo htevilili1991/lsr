@@ -36,7 +36,18 @@ class RegistryController extends Controller
      */
     public function create()
     {
-        // Not implemented yet
+        try {
+            return Inertia::render('registry/create', [
+                'auth' => [
+                    'user' => auth()->user() ? auth()->user()->only(['id', 'name', 'email', 'avatar']) : null,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error rendering create form: ' . $e->getMessage());
+            return Inertia::render('Error', [
+                'message' => 'Unable to load the create form.',
+            ]);
+        }
     }
 
     /**
@@ -44,7 +55,7 @@ class RegistryController extends Controller
      */
     public function store(Request $request)
     {
-        // Not implemented yet
+
     }
 
     /**
@@ -52,28 +63,7 @@ class RegistryController extends Controller
      */
     public function show(string $id)
     {
-        try {
-            $registry = Registry::findOrFail($id);
-            return Inertia::render('registry/show', [
-                'registry' => $registry,
-                'auth' => [
-                    'user' => auth()->user() ? auth()->user()->only(['id', 'name', 'email', 'avatar']) : null,
-                ],
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Error fetching registry record: ' . $e->getMessage());
-            return Inertia::render('Error', [
-                'message' => 'Unable to load registry record.',
-            ]);
-        }
-    }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        // Not implemented yet
     }
 
     /**
@@ -124,80 +114,74 @@ class RegistryController extends Controller
 
     /**
      * Display the CSV upload form.
-    */
-    public function upload()
+     */
+    public function csvUpload()
     {
         try {
-            return Inertia::render('registry/Upload', [
+            return Inertia::render('registry/upload', [
                 'auth' => [
                     'user' => auth()->user() ? auth()->user()->only(['id', 'name', 'email', 'avatar']) : null,
                 ],
-                'errors' => session('errors') ? session('errors')->getBag('default')->getMessages() : [],
             ]);
         } catch (\Exception $e) {
-            \Log::error('Error rendering CSV upload page: ' . $e->getMessage());
-            return Inertia::render('registry/Error', [
-                'message' => 'Unable to load CSV upload page.',
+            Log::error('Error rendering CSV upload form: ' . $e->getMessage());
+            return Inertia::render('Error', [
+                'message' => 'Unable to load the CSV upload form.',
             ]);
         }
     }
 
     /**
-     * Process and store CSV data.
+     * Handle the CSV file upload and append data to the registry table.
      */
     public function storeCsv(Request $request)
     {
+        $request->validate([
+            'csv_file' => 'required|file|mimes:csv,txt|max:2048',
+        ]);
+
         try {
-            $validator = Validator::make($request->all(), [
-                'csv_file' => 'required|file|mimes:csv,txt|max:2048',
-            ]);
+            $file = $request->file('csv_file');
+            $csv = Reader::createFromPath($file->getPathname(), 'r');
+            $csv->setHeaderOffset(0); // Assumes the first row is the header
 
-            if ($validator->fails()) {
-                return Redirect::back()->withErrors($validator);
+            $inserted = 0;
+            $skipped = 0;
+
+            foreach ($csv as $record) {
+                // Check for duplicate based on 'document_no'
+                if (Registry::where('document_no', $record['document_no'])->exists()) {
+                    $skipped++;
+                    continue;
+                }
+
+                Registry::create([
+                    'surname' => $record['surname'],
+                    'given_name' => $record['given_name'],
+                    'nationality' => $record['nationality'],
+                    'country_of_residence' => $record['country_of_residence'],
+                    'document_type' => $record['document_type'],
+                    'document_no' => $record['document_no'],
+                    'dob' => $record['dob'],
+                    'age' => $record['age'],
+                    'sex' => $record['sex'],
+                    'travel_date' => $record['travel_date'],
+                    'direction' => $record['direction'],
+                    'accommodation_address' => $record['accommodation_address'],
+                    'note' => $record['note'] ?? null,
+                    'travel_reason' => $record['travel_reason'],
+                    'border_post' => $record['border_post'],
+                    'destination_coming_from' => $record['destination_coming_from'],
+                ]);
+                $inserted++;
             }
 
-            $csv = Reader::createFromPath($request->file('csv_file')->getPathname(), 'r');
-            $csv->setHeaderOffset(0);
-
-            $expectedHeaders = [
-                'surname', 'given_name', 'nationality', 'country_of_residence',
-                'document_type', 'document_no', 'dob', 'age', 'sex',
-                'travel_date', 'direction', 'accommodation_address', 'note',
-                'travel_reason', 'border_post', 'destination_coming_from'
-            ];
-
-            $headers = $csv->getHeader();
-            if (array_diff($expectedHeaders, $headers)) {
-                return Redirect::back()->withErrors(['csv_file' => 'CSV file headers do not match expected format.']);
-            }
-
-            foreach ($csv->getRecords() as $record) {
-                Validator::make($record, [
-                    'surname' => 'required|string|max:255',
-                    'given_name' => 'required|string|max:255',
-                    'nationality' => 'required|string|max:255',
-                    'country_of_residence' => 'required|string|max:255',
-                    'document_type' => 'required|string|max:255',
-                    'document_no' => 'required|string|max:255',
-                    'dob' => 'required|date',
-                    'age' => 'required|integer|min:0',
-                    'sex' => 'required|string|max:50',
-                    'travel_date' => 'required|date',
-                    'direction' => 'required|string|max:255',
-                    'accommodation_address' => 'required|string|max:255',
-                    'note' => 'nullable|string|max:1000',
-                    'travel_reason' => 'required|string|max:255',
-                    'border_post' => 'required|string|max:255',
-                    'destination_coming_from' => 'required|string|max:255',
-                ])->validate();
-
-                Registry::create($record);
-            }
-
-            return Redirect::route('registry.upload')->with('success', 'CSV uploaded and processed successfully.');
+            $message = "CSV processed: $inserted records added, $skipped records skipped (duplicates).";
+            return Redirect::route('registry.csv.upload')->with('success', $message);
         } catch (\Exception $e) {
-            Log::error('CSV Upload Error: ' . $e->getMessage());
-            return Redirect::back()->withErrors(['csv_file' => 'Error processing CSV file.']);
+            Log::error('Error processing CSV: ' . $e->getMessage());
+            return Redirect::route('registry.csv.upload')->with('error', 'Error processing CSV: ' . $e->getMessage());
         }
     }
+
 }

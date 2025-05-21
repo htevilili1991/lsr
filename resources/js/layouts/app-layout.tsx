@@ -7,6 +7,8 @@ interface AppLayoutProps {
     breadcrumbs?: BreadcrumbItem[];
 }
 
+
+
 export default ({ children, breadcrumbs, ...props }: AppLayoutProps) => (
     <AppLayoutTemplate breadcrumbs={breadcrumbs} {...props}>
         {children}
