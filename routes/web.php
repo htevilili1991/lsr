@@ -14,11 +14,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->name('dashboard');
 });
 
-Route::middleware(['auth'])->group(function () {
-    Route::resource('registry', RegistryController::class);
-    Route::get('registry/upload', [RegistryController::class, 'csvUpload'])->name('registry.csv.upload');
-    Route::post('registry/upload', [RegistryController::class, 'storeCsv'])->name('registry.csv.store');
-});
+Route::resource('registry', RegistryController::class)-> middleware(['auth']);
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
