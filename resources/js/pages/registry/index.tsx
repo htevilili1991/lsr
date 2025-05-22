@@ -3,6 +3,7 @@ import { useReactTable, getCoreRowModel, getSortedRowModel, getFilteredRowModel,
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type User } from '@/types';
 import React, { useState } from 'react';
+import { flexRender } from '@tanstack/react-table';
 
 // Define TypeScript interfaces
 interface Registry {
@@ -49,12 +50,45 @@ export default function Registry({ auth, registry }: Props) {
         () => [
             { header: 'Surname', accessorKey: 'surname', enableSorting: true },
             { header: 'Given Name', accessorKey: 'given_name', enableSorting: true },
-            { header: 'DOB', accessorKey: 'dob', enableSorting: true },
             { header: 'Sex', accessorKey: 'sex', enableSorting: true },
             { header: 'Travel Date', accessorKey: 'travel_date', enableSorting: true },
             { header: 'Direction', accessorKey: 'direction', enableSorting: true },
             { header: 'Travel Reason', accessorKey: 'travel_reason', enableSorting: true },
             { header: 'Destination/Coming From', accessorKey: 'destination_coming_from', enableSorting: true },
+            {
+                header: 'Actions',
+                id: 'actions',
+                cell: ({ row }) => (
+                    <div className="flex space-x-2">
+                        <Link
+                            href={`/registry/${row.original.id}`}
+                            className="px-3 py-1 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                        >
+                            View
+                        </Link>
+                        <Link
+                            href={`/registry/${row.original.id}/edit`}
+                            className="px-3 py-1 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                        >
+                            Edit
+                        </Link>
+                        <Link
+                            href={`/registry/${row.original.id}`}
+                            method="delete"
+                            as="button"
+                            className="px-3 py-1 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                            onClick={(e) => {
+                                if (!confirm('Are you sure you want to delete this record?')) {
+                                    e.preventDefault();
+                                }
+                            }}
+                        >
+                            Delete
+                        </Link>
+                    </div>
+                ),
+                enableSorting: false,
+            },
         ],
         []
     );
@@ -116,13 +150,13 @@ export default function Registry({ auth, registry }: Props) {
                                             className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                                             onClick={header.column.getToggleSortingHandler()}
                                         >
-                                            {header.isPlaceholder ? null : header.column.columnDef.header}
+                                            {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                                             <span>
-                                                    {{
-                                                        asc: ' 🔼',
-                                                        desc: ' 🔽',
-                                                    }[header.column.getIsSorted() as string] ?? ''}
-                                                </span>
+                                                {{
+                                                    asc: ' 🔼',
+                                                    desc: ' 🔽',
+                                                }[header.column.getIsSorted() as string] ?? ''}
+                                            </span>
                                         </th>
                                     ))}
                                 </tr>
@@ -130,21 +164,15 @@ export default function Registry({ auth, registry }: Props) {
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
                             {table.getRowModel().rows.map(row => (
-                                <tr
-                                    key={row.id}
-                                    className="hover:bg-gray-50 cursor-pointer"
-                                >
+                                <tr key={row.id} className="hover:bg-gray-50">
                                     {row.getVisibleCells().map(cell => (
                                         <td
                                             key={cell.id}
                                             className="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
                                         >
-                                            <Link
-                                                href={`/registry/${row.original.id}`}
-                                                className="block w-full h-full"
-                                            >
-                                                {cell.getValue() ? String(cell.getValue()) : 'N/A'}
-                                            </Link>
+                                            {cell.column.id === 'actions'
+                                                ? flexRender(cell.column.columnDef.cell, cell.getContext())
+                                                : (cell.getValue() ? String(cell.getValue()) : 'N/A')}
                                         </td>
                                     ))}
                                 </tr>

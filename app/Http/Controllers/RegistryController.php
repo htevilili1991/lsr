@@ -63,7 +63,41 @@ class RegistryController extends Controller
      */
     public function show(string $id)
     {
+        try {
+            $registry = Registry::findOrFail($id);
+            return Inertia::render('registry/show', [
+                'registry' => $registry,
+                'auth' => [
+                    'user' => auth()->user() ? auth()->user()->only(['id', 'name', 'email', 'avatar']) : null,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error fetching registry record: ' . $e->getMessage());
+            return Inertia::render('Error', [
+                'message' => 'Unable to load registry record.',
+            ]);
+        }
+    }
 
+    /**
+     * Show the form for editing the specified resource.
+     */
+    public function edit(string $id)
+    {
+        try {
+            $registry = Registry::findOrFail($id);
+            return Inertia::render('registry/edit', [
+                'registry' => $registry,
+                'auth' => [
+                    'user' => auth()->user() ? auth()->user()->only(['id', 'name', 'email', 'avatar']) : null,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error fetching registry record for edit: ' . $e->getMessage());
+            return Inertia::render('Error', [
+                'message' => 'Unable to load the edit form.',
+            ]);
+        }
     }
 
     /**
@@ -109,7 +143,17 @@ class RegistryController extends Controller
      */
     public function destroy(string $id)
     {
-        // Not implemented yet
+        try {
+            $registry = Registry::findOrFail($id);
+            \Log::info('Deleting registry record:', $registry->toArray());
+            $registry->delete();
+            return Redirect::route('registry.index')->with('success', 'Record deleted successfully.');
+        } catch (\Exception $e) {
+            \Log::error('Error deleting registry record: ' . $e->getMessage());
+            return Inertia::render('Error', [
+                'message' => 'Unable to delete registry record.',
+            ]);
+        }
     }
 
 }
