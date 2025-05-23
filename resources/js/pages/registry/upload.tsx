@@ -1,5 +1,5 @@
 import React from 'react';
-import {Head, useForm, usePage} from '@inertiajs/react';
+import { Head, useForm, usePage } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import AppLayout from '@/layouts/app-layout';
 
@@ -46,6 +46,17 @@ const Upload: React.FC = () => {
                 <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div className="p-6 bg-white border-b border-gray-200">
                         <h2 className="text-2xl font-bold mb-4">Upload Registry CSV</h2>
+                        <p className="mb-4 text-sm text-gray-600">
+                            Download the{' '}
+                            <a
+                                href="/templates/registry-template.csv"
+                                download
+                                className="text-blue-600 hover:underline font-medium"
+                            >
+                                CSV template
+                            </a>{' '}
+                            to ensure your file is formatted correctly. The template includes all required fields for the registry. When importing, records with duplicate document numbers will be skipped to prevent data redundancy.
+                        </p>
                         {test && (
                             <div className="mb-4 p-4 bg-blue-100 text-blue-700 rounded">
                                 {test}
@@ -72,11 +83,11 @@ const Upload: React.FC = () => {
                                     accept=".csv"
                                     onChange={handleFileChange}
                                     className="mt-1 block w-full text-sm text-gray-500
-                    file:mr-4 file:py-2 file:px-4
-                    file:rounded-md file:border-0
-                    file:text-sm file:font-semibold
-                    file:bg-blue-50 file:text-blue-700
-                    hover:file:bg-blue-100"
+                                        file:mr-4 file:py-2 file:px-4
+                                        file:rounded-md file:border-0
+                                        file:text-sm file:font-semibold
+                                        file:bg-blue-50 file:text-blue-700
+                                        hover:file:bg-blue-100"
                                 />
                             </div>
                             <button
