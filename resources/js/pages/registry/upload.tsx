@@ -39,6 +39,11 @@ const Upload: React.FC = () => {
         });
     };
 
+    const breadcrumbs = [
+        { href: '/dashboard', label: 'Dashboard' },
+        { href: '/registry/upload', label: 'Upload Registry CSV' },
+    ];
+
     return (
         <AppLayout title="Upload Registry CSV" auth={auth}>
             <Head title="Upload Registry CSV" />
@@ -49,7 +54,7 @@ const Upload: React.FC = () => {
                         <p className="mb-4 text-sm text-gray-600">
                             Download the{' '}
                             <a
-                                href="/templates/registry-template.csv"
+                                href="/template/registry-template.csv"
                                 download
                                 className="text-blue-600 hover:underline font-medium"
                             >
