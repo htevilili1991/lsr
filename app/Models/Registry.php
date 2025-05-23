@@ -26,4 +26,10 @@ class Registry extends Model
         'border_post',
         'destination_coming_from',
     ];
+
+    protected $casts = [
+        'dob' => 'date',
+        'travel_date' => 'date',
+        'age' => 'integer',
+    ];
 }

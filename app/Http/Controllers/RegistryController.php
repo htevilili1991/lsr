@@ -156,4 +156,102 @@ class RegistryController extends Controller
         }
     }
 
+    /**
+     * Show the form for uploading a CSV file.
+     */
+    public function upload()
+    {
+        try {
+            return Inertia::render('registry/upload', [
+                'auth' => [
+                    'user' => auth()->user() ? auth()->user()->only(['id', 'name', 'email', 'avatar']) : null,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error rendering CSV upload form: ' . $e->getMessage());
+            return Inertia::render('Error', [
+                'message' => 'Unable to load the CSV upload form.',
+            ]);
+        }
+    }
+
+    /**
+     * Process and store the uploaded CSV file.
+     */
+    public function storeCsv(Request $request)
+    {
+        try {
+            // Validate the uploaded file
+            $request->validate([
+                'csv_file' => 'required|file|mimes:csv,txt|max:10240', // 10MB max
+            ]);
+
+            $file = $request->file('csv_file');
+            $path = $file->store('uploads', 'local');
+
+            // Read the CSV
+            $handle = fopen(Storage::disk('local')->path($path), 'r');
+            $header = fgetcsv($handle); // Read header row
+
+            // Expected headers
+            $expectedHeaders = [
+                'surname', 'given_name', 'nationality', 'country_of_residence',
+                'document_type', 'document_no', 'dob', 'age', 'sex', 'travel_date',
+                'direction', 'accommodation_address', 'note', 'travel_reason',
+                'border_post', 'destination_coming_from'
+            ];
+
+            // Validate headers
+            if ($header !== $expectedHeaders) {
+                Storage::disk('local')->delete($path);
+                return Redirect::back()->withErrors(['csv_file' => 'Invalid CSV headers. Expected: ' . implode(', ', $expectedHeaders)]);
+            }
+
+            $records = [];
+            while (($row = fgetcsv($handle)) !== false) {
+                // Skip if document_no already exists
+                if (Registry::where('document_no', $row[5])->exists()) {
+                    Log::warning('Skipping duplicate document_no: ' . $row[5]);
+                    continue;
+                }
+
+                $records[] = [
+                    'surname' => $row[0],
+                    'given_name' => $row[1],
+                    'nationality' => $row[2],
+                    'country_of_residence' => $row[3],
+                    'document_type' => $row[4],
+                    'document_no' => $row[5],
+                    'dob' => !empty($row[6]) ? date('Y-m-d', strtotime(str_replace('/', '-', $row[6]))) : null,
+                    'age' => (int)$row[7],
+                    'sex' => $row[8],
+                    'travel_date' => !empty($row[9]) ? date('Y-m-d', strtotime(str_replace('/', '-', $row[9]))) : null,
+                    'direction' => $row[10],
+                    'accommodation_address' => $row[11],
+                    'note' => !empty($row[12]) ? $row[12] : null,
+                    'travel_reason' => $row[13],
+                    'border_post' => $row[14],
+                    'destination_coming_from' => $row[15],
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+            fclose($handle);
+
+            // Delete the temporary file
+            Storage::disk('local')->delete($path);
+
+            // Insert records in chunks
+            foreach (array_chunk($records, 100) as $chunk) {
+                Registry::insert($chunk);
+            }
+
+            Log::info('CSV uploaded successfully', ['file' => $file->getClientOriginalName(), 'records' => count($records)]);
+            return Redirect::route('registry.index')->with('success', 'CSV uploaded and records inserted successfully.');
+        } catch (\Exception $e) {
+            Log::error('Error processing CSV: ' . $e->getMessage());
+            return Redirect::back()->withErrors(['csv_file' => 'Error processing CSV: ' . $e->getMessage()]);
+        }
+    }
+
 }

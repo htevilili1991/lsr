@@ -13,6 +13,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('dashboard');
     })->name('dashboard');
     Route::resource('registry', RegistryController::class);
+    Route::get('registry/upload', [RegistryController::class, 'upload'])->name('registry.upload');
+    Route::post('registry/upload', [RegistryController::class, 'storeCsv'])->name('registry.storeCsv');
 });
 
 require __DIR__.'/settings.php';
