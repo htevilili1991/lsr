@@ -4,8 +4,9 @@ import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { BookOpen, FileIcon, FileInput, Folder, LayoutGrid } from 'lucide-react';
+import {BookOpen, FileIcon, FileInput, Folder, LayoutGrid, UploadIcon} from 'lucide-react';
 import AppLogo from './app-logo';
+import upload from "@/pages/registry/upload";
 
 const mainNavItems: NavItem[] = [
     {
@@ -18,6 +19,12 @@ const mainNavItems: NavItem[] = [
         href: '/registry',
         icon: FileIcon,
     },
+    {
+        title: 'Upload Data',
+        href: '/registry/upload',
+        icon: UploadIcon,
+    },
+
 ];
 
 const footerNavItems: NavItem[] = [

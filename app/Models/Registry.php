@@ -27,9 +27,4 @@ class Registry extends Model
         'destination_coming_from',
     ];
 
-    protected $casts = [
-        'dob' => 'date',
-        'travel_date' => 'date',
-        'age' => 'integer',
-    ];
 }

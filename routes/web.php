@@ -12,9 +12,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', function () {
         return Inertia::render('dashboard');
     })->name('dashboard');
-    Route::resource('registry', RegistryController::class);
+
+    // Explicit upload routes
     Route::get('registry/upload', [RegistryController::class, 'upload'])->name('registry.upload');
     Route::post('registry/upload', [RegistryController::class, 'storeCsv'])->name('registry.storeCsv');
+
+    // Resource routes with constraints
+    Route::resource('registry', RegistryController::class)->where(['registry' => '[0-9]+']);
 });
 
 require __DIR__.'/settings.php';

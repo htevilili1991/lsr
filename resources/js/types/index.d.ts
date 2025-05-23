@@ -41,3 +41,41 @@ export interface User {
     updated_at: string;
     [key: string]: unknown; // This allows for additional properties...
 }
+
+export interface Registry {
+    id: number;
+    surname: string;
+    given_name: string;
+    nationality: string;
+    country_of_residence: string;
+    document_type: string;
+    document_no: string;
+    dob: string;
+    age: number;
+    sex: string;
+    travel_date: string;
+    direction: string;
+    accommodation_address: string;
+    note: string | null;
+    travel_reason: string;
+    border_post: string;
+    destination_coming_from: string;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface PageProps {
+    [key: string]: any;
+    auth?: {
+        user: {
+            id: number;
+            name: string;
+            email: string;
+            avatar?: string;
+        } | null;
+    };
+    errors?: {
+        [key: string]: string;
+    };
+    success?: string;
+}
