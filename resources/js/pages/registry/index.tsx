@@ -1,11 +1,11 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { useReactTable, getCoreRowModel, getSortedRowModel, getFilteredRowModel, getPaginationRowModel, type ColumnDef } from '@tanstack/react-table';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type User } from '@/types';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { flexRender } from '@tanstack/react-table';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
-// Define TypeScript interfaces
 interface Registry {
     id: number;
     surname: string;
@@ -33,7 +33,6 @@ interface Props {
     registry: Registry[];
 }
 
-// Breadcrumbs
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Registry',
@@ -42,10 +41,19 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function Registry({ auth, registry }: Props) {
-    // State for search query
     const [globalFilter, setGlobalFilter] = useState('');
+    const { flash } = usePage<{ flash?: { success?: string; error?: string } }>().props;
+    const flashMessage = flash?.success || flash?.error;
+    const [showAlert, setShowAlert] = useState(!!flashMessage);
 
-    // Define columns
+    useEffect(() => {
+        if (flashMessage) {
+            setShowAlert(true);
+            const timer = setTimeout(() => setShowAlert(false), 4000);
+            return () => clearTimeout(timer);
+        }
+    }, [flashMessage]);
+
     const columns: ColumnDef<Registry>[] = React.useMemo(
         () => [
             { header: 'Surname', accessorKey: 'surname', enableSorting: true },
@@ -93,7 +101,6 @@ export default function Registry({ auth, registry }: Props) {
         []
     );
 
-    // Initialize react-table
     const table = useReactTable<Registry>({
         data: registry || [],
         columns,
@@ -121,20 +128,48 @@ export default function Registry({ auth, registry }: Props) {
     return (
         <AppLayout breadcrumbs={breadcrumbs} auth={auth}>
             <Head title="Registry" />
-            <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
+            <div className="relative flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
+                {showAlert && flashMessage && (
+                    <Alert
+                        variant={flash.success ? 'default' : 'destructive'}
+                        className={`fixed top-4 right-4 z-50 max-w-md animate-in fade-in slide-in-from-top-2 duration-300 ${flash.success ? 'bg-green-600' : 'bg-red-600'} text-white shadow-lg rounded-lg ${!showAlert ? 'animate-out fade-out slide-out-to-top-2' : ''}`}
+                    >
+                        <AlertDescription className="text-white pr-8">
+                            {flash.success ? 'Success! ' : 'Error! '}
+                            {flashMessage}
+                        </AlertDescription>
+                        <button
+                            onClick={() => setShowAlert(false)}
+                            className="absolute top-2 right-2 text-white hover:text-gray-200 focus:outline-none"
+                            aria-label="Close alert"
+                        >
+                            ✕
+                        </button>
+                    </Alert>
+                )}
                 <div className="mb-4">
                     <input
                         type="text"
                         value={globalFilter}
-                        onChange={e => setGlobalFilter(e.target.value)}
+                        onChange={(e) => setGlobalFilter(e.target.value)}
                         placeholder="Search registry..."
                         className="w-full max-w-md rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 text-sm"
                     />
                 </div>
                 {registry?.length === 0 ? (
                     <div className="text-center py-8">
-                        <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7h18M3 11h18m-9 4h9m-9 4h6" />
+                        <svg
+                            className="mx-auto h-12 w-12 text-gray-400"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M3 7h18M3 11h18m-9 4h9m-9 4h6"
+                            />
                         </svg>
                         <p className="mt-2 text-gray-500">No registry data available.</p>
                     </div>
@@ -142,37 +177,47 @@ export default function Registry({ auth, registry }: Props) {
                     <div className="border-sidebar-border/70 dark:border-sidebar-border relative overflow-x-auto rounded-xl border">
                         <table className="min-w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
-                            {table.getHeaderGroups().map(headerGroup => (
+                            {table.getHeaderGroups().map((headerGroup) => (
                                 <tr key={headerGroup.id}>
-                                    {headerGroup.headers.map(header => (
+                                    {headerGroup.headers.map((header) => (
                                         <th
                                             key={header.id}
                                             className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                                             onClick={header.column.getToggleSortingHandler()}
                                         >
-                                            {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                                            {header.isPlaceholder
+                                                ? null
+                                                : flexRender(
+                                                    header.column.columnDef.header,
+                                                    header.getContext()
+                                                )}
                                             <span>
-                                                {{
-                                                    asc: ' 🔼',
-                                                    desc: ' 🔽',
-                                                }[header.column.getIsSorted() as string] ?? ''}
-                                            </span>
+                                                    {{
+                                                        asc: ' 🔼',
+                                                        desc: ' 🔽',
+                                                    }[header.column.getIsSorted() as string] ?? ''}
+                                                </span>
                                         </th>
                                     ))}
                                 </tr>
                             ))}
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
-                            {table.getRowModel().rows.map(row => (
+                            {table.getRowModel().rows.map((row) => (
                                 <tr key={row.id} className="hover:bg-gray-50">
-                                    {row.getVisibleCells().map(cell => (
+                                    {row.getVisibleCells().map((cell) => (
                                         <td
                                             key={cell.id}
                                             className="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
                                         >
                                             {cell.column.id === 'actions'
-                                                ? flexRender(cell.column.columnDef.cell, cell.getContext())
-                                                : (cell.getValue() ? String(cell.getValue()) : 'N/A')}
+                                                ? flexRender(
+                                                    cell.column.columnDef.cell,
+                                                    cell.getContext()
+                                                )
+                                                : cell.getValue()
+                                                    ? String(cell.getValue())
+                                                    : 'N/A'}
                                         </td>
                                     ))}
                                 </tr>
@@ -182,16 +227,17 @@ export default function Registry({ auth, registry }: Props) {
                         <div className="flex items-center justify-between px-6 py-4">
                             <div className="flex items-center gap-2">
                                 <span className="text-sm text-gray-700">
-                                    Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+                                    Page {table.getState().pagination.pageIndex + 1} of{' '}
+                                    {table.getPageCount()}
                                 </span>
                                 <select
                                     value={table.getState().pagination.pageSize}
-                                    onChange={e => {
+                                    onChange={(e) => {
                                         table.setPageSize(Number(e.target.value));
                                     }}
                                     className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-1 text-sm"
                                 >
-                                    {[10, 25, 50].map(pageSize => (
+                                    {[10, 25, 50].map((pageSize) => (
                                         <option key={pageSize} value={pageSize}>
                                             Show {pageSize}
                                         </option>
