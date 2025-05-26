@@ -2,7 +2,7 @@ import { Head, Link, usePage, router } from '@inertiajs/react';
 import { useReactTable, getCoreRowModel, getSortedRowModel, getPaginationRowModel, type ColumnDef } from '@tanstack/react-table';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type User } from '@/types';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { flexRender } from '@tanstack/react-table';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
@@ -29,13 +29,19 @@ interface Registry {
     destination_coming_from: string;
 }
 
+interface PaginationLink {
+    url: string | null;
+    label: string;
+    active: boolean;
+}
+
 interface Props {
     auth: {
         user: User | null;
     };
     registry: {
         data: Registry[];
-        links: any;
+        links: PaginationLink[];
         meta: {
             current_page: number;
             last_page: number;
@@ -47,7 +53,11 @@ interface Props {
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
-        title: 'Registry',
+        label: 'Dashboard',
+        href: '/dashboard',
+    },
+    {
+        label: 'Registry',
         href: '/registry',
     },
 ];
@@ -153,12 +163,12 @@ export default function Registry({ auth, registry }: Props) {
         },
     });
 
-    const handleSearchSubmit = () => {
+    const handleSearchSubmit = useCallback(() => {
         router.visit(`/registry?page=1&per_page=${table.getState().pagination.pageSize}&sort=${table.getState().sorting[0]?.id || ''}:${table.getState().sorting[0]?.desc ? 'desc' : 'asc'}&search=${globalFilter}`, {
             preserveState: true,
             preserveScroll: true,
         });
-    };
+    }, [globalFilter, table]);
 
     // Debounce search submission
     useEffect(() => {
@@ -166,9 +176,9 @@ export default function Registry({ auth, registry }: Props) {
             if (globalFilter !== initialSearch) {
                 handleSearchSubmit();
             }
-        }, 200); // 200ms delay after typing stops
+        }, 200);
         return () => clearTimeout(timer);
-    }, [globalFilter, initialSearch]);
+    }, [globalFilter, initialSearch, handleSearchSubmit]);
 
     // Export all filtered data to CSV
     const exportToCSV = async () => {
@@ -231,8 +241,6 @@ export default function Registry({ auth, registry }: Props) {
         } catch (error) {
             console.error('Export failed:', error);
             setShowAlert(true);
-            // Update flash message for error
-            // Note: Directly modifying flash is not ideal; consider a state for errors
             flash.error = 'Failed to export data. Please try again.';
         }
     };

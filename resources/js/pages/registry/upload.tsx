@@ -39,8 +39,13 @@ const Upload: React.FC = () => {
         });
     };
 
+    const breadcrumbs = [
+        { href: '/dashboard', label: 'Dashboard' },
+        { href: '/registry/upload', label: 'Upload Registry CSV' },
+    ];
+
     return (
-        <AppLayout title="Upload Registry CSV" auth={auth}>
+        <AppLayout title="Upload Registry CSV" auth={auth} breadcrumbs={breadcrumbs}>
             <Head title="Upload Registry CSV" />
             <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 py-12">
                 <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
