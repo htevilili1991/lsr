@@ -19,6 +19,7 @@ export interface NavItem {
     title: string;
     href: string;
     icon?: LucideIcon | null;
+    permission?: string;
     isActive?: boolean;
 }
 
@@ -39,7 +40,20 @@ export interface User {
     email_verified_at: string | null;
     created_at: string;
     updated_at: string;
+    roles?: string[];
+    permissions?: string[];
     [key: string]: unknown; // This allows for additional properties...
+}
+
+export interface Role {
+    id: number;
+    name: string;
+    permissions: { name: string }[];
+}
+
+export interface Permission {
+    id: number;
+    name: string;
 }
 
 export interface Registry {

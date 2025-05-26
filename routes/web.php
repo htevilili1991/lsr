@@ -3,6 +3,7 @@
 use App\Http\Controllers\RegistryController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use App\Http\Controllers\GroupController;
 
 Route::get('/', function () {
     return Inertia::render('auth/login');
@@ -19,6 +20,22 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Resource routes with constraints
     Route::resource('registry', RegistryController::class)->where(['registry' => '[0-9]+']);
+
+    Route::get('/groups', [GroupController::class, 'index'])
+        ->middleware('permission:view groups')
+        ->name('groups.index');
+    Route::post('/groups', [GroupController::class, 'store'])
+        ->middleware('permission:create groups')
+        ->name('groups.store');
+    Route::put('/groups/{role}', [GroupController::class, 'update'])
+        ->middleware('permission:edit groups')
+        ->name('groups.update');
+    Route::delete('/groups/{role}', [GroupController::class, 'destroy'])
+        ->middleware('permission:delete groups')
+        ->name('groups.destroy');
+    Route::post('/groups/{role}/permissions', [GroupController::class, 'assignPermissions'])
+        ->middleware('permission:assign permissions')
+        ->name('groups.permissions');
 });
 
 require __DIR__.'/settings.php';
