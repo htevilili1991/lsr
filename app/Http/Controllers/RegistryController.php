@@ -14,12 +14,65 @@ class RegistryController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
         try {
-            $registry = Registry::all();
+            $perPage = $request->input('per_page', 10);
+            $page = $request->input('page', 1);
+            $sort = $request->input('sort', 'id:asc');
+            $search = $request->input('search', '');
+            $filters = json_decode($request->input('filters', '[]'), true);
+
+            $query = Registry::query();
+
+            // Apply global search
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('surname', 'like', "%{$search}%")
+                        ->orWhere('given_name', 'like', "%{$search}%")
+                        ->orWhere('sex', 'like', "%{$search}%")
+                        ->orWhere('travel_date', 'like', "%{$search}%")
+                        ->orWhere('travel_reason', 'like', "%{$search}%")
+                        ->orWhere('destination_coming_from', 'like', "%{$search}%");
+                });
+            }
+
+            // Apply column filters
+            foreach ($filters as $filter) {
+                if (!empty($filter['id']) && !empty($filter['value'])) {
+                    $query->where($filter['id'], 'like', "%{$filter['value']}%");
+                }
+            }
+
+            // Apply sorting
+            if ($sort) {
+                [$sortColumn, $sortDirection] = explode(':', $sort);
+                // Validate sort column to prevent SQL injection
+                $validColumns = [
+                    'surname', 'given_name', 'sex', 'travel_date',
+                    'travel_reason', 'destination_coming_from', 'id'
+                ];
+                if (in_array($sortColumn, $validColumns) && in_array($sortDirection, ['asc', 'desc'])) {
+                    $query->orderBy($sortColumn, $sortDirection);
+                } else {
+                    $query->orderBy('id', 'asc'); // Fallback
+                }
+            }
+
+            // Paginate results
+            $registry = $query->paginate($perPage, ['*'], 'page', $page);
+
             return Inertia::render('registry/index', [
-                'registry' => $registry,
+                'registry' => [
+                    'data' => $registry->items(),
+                    'links' => $registry->links(),
+                    'meta' => [
+                        'current_page' => $registry->currentPage(),
+                        'last_page' => $registry->lastPage(),
+                        'per_page' => $registry->perPage(),
+                        'total' => $registry->total(),
+                    ],
+                ],
                 'auth' => [
                     'user' => auth()->user() ? auth()->user()->only(['id', 'name', 'email', 'avatar']) : null,
                 ],
@@ -56,7 +109,7 @@ class RegistryController extends Controller
      */
     public function store(Request $request)
     {
-
+        // Your existing store method
     }
 
     /**
@@ -254,5 +307,4 @@ class RegistryController extends Controller
             return Redirect::back()->withErrors(['csv_file' => 'Error processing CSV: ' . $e->getMessage()]);
         }
     }
-
 }
