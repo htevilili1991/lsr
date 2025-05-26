@@ -86,6 +86,72 @@ class RegistryController extends Controller
     }
 
     /**
+     * Export all filtered records as JSON for CSV generation.
+     */
+    public function export(Request $request)
+    {
+        try {
+            $sort = $request->input('sort', 'id:asc');
+            $search = $request->input('search', '');
+            $filters = json_decode($request->input('filters', '[]'), true);
+
+            $query = Registry::query();
+
+            // Apply global search
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('surname', 'like', "%{$search}%")
+                        ->orWhere('given_name', 'like', "%{$search}%")
+                        ->orWhere('sex', 'like', "%{$search}%")
+                        ->orWhere('travel_date', 'like', "%{$search}%")
+                        ->orWhere('travel_reason', 'like', "%{$search}%")
+                        ->orWhere('destination_coming_from', 'like', "%{$search}%");
+                });
+            }
+
+            // Apply column filters
+            foreach ($filters as $filter) {
+                if (!empty($filter['id']) && !empty($filter['value'])) {
+                    $query->where($filter['id'], 'like', "%{$filter['value']}%");
+                }
+            }
+
+            // Apply sorting
+            if ($sort) {
+                [$sortColumn, $sortDirection] = explode(':', $sort);
+                $validColumns = [
+                    'surname', 'given_name', 'sex', 'travel_date',
+                    'travel_reason', 'destination_coming_from', 'id'
+                ];
+                if (in_array($sortColumn, $validColumns) && in_array($sortDirection, ['asc', 'desc'])) {
+                    $query->orderBy($sortColumn, $sortDirection);
+                } else {
+                    $query->orderBy('id', 'asc'); // Fallback
+                }
+            }
+
+            // Fetch all matching records
+            $data = $query->get([
+                'surname', 'given_name', 'nationality', 'country_of_residence',
+                'document_type', 'document_no', 'dob', 'age', 'sex', 'travel_date',
+                'direction', 'accommodation_address', 'note', 'travel_reason',
+                'border_post', 'destination_coming_from'
+            ]);
+
+            return response()->json([
+                'registry' => [
+                    'data' => $data,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error exporting registry data: ' . $e->getMessage());
+            return response()->json([
+                'error' => 'Unable to export registry data.',
+            ], 500);
+        }
+    }
+
+    /**
      * Show the form for creating a new resource.
      */
     public function create()

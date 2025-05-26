@@ -170,35 +170,71 @@ export default function Registry({ auth, registry }: Props) {
         return () => clearTimeout(timer);
     }, [globalFilter, initialSearch]);
 
-    // Export filtered data to CSV
-    const exportToCSV = () => {
-        const headers = columns
-            .filter((col) => col.id !== 'actions') // Exclude actions column
-            .map((col) => col.header as string);
+    // Export all filtered data to CSV
+    const exportToCSV = async () => {
+        try {
+            const response = await fetch(`/registry/export?search=${encodeURIComponent(globalFilter)}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+            });
 
-        const csvRows = [
-            headers.join(','), // Header row
-            ...registry.data.map((row) =>
-                headers
-                    .map((header) => {
-                        const key = columns.find((col) => col.header === header)?.accessorKey as keyof Registry;
-                        const value = row[key] ?? 'N/A';
-                        return `"${String(value).replace(/"/g, '""')}"`; // Escape quotes for CSV
-                    })
-                    .join(',')
-            ),
-        ];
+            if (!response.ok) {
+                throw new Error('Failed to fetch export data');
+            }
 
-        const csvContent = csvRows.join('\n');
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.setAttribute('href', url);
-        link.setAttribute('download', `registry_export_${new Date().toISOString().split('T')[0]}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+            const { registry: { data } }: { registry: { data: Registry[] } } = await response.json();
+
+            const headers = [
+                'surname',
+                'given_name',
+                'nationality',
+                'country_of_residence',
+                'document_type',
+                'document_no',
+                'dob',
+                'age',
+                'sex',
+                'travel_date',
+                'direction',
+                'accommodation_address',
+                'note',
+                'travel_reason',
+                'border_post',
+                'destination_coming_from',
+            ];
+
+            const csvRows = [
+                headers.join(','), // Header row
+                ...data.map((row) =>
+                    headers
+                        .map((key) => {
+                            const value = row[key as keyof Registry] ?? 'N/A';
+                            return `"${String(value).replace(/"/g, '""')}"`; // Escape quotes for CSV
+                        })
+                        .join(',')
+                ),
+            ];
+
+            const csvContent = csvRows.join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', `registry_export_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Export failed:', error);
+            setShowAlert(true);
+            // Update flash message for error
+            // Note: Directly modifying flash is not ideal; consider a state for errors
+            flash.error = 'Failed to export data. Please try again.';
+        }
     };
 
     return (
@@ -223,7 +259,7 @@ export default function Registry({ auth, registry }: Props) {
                         </button>
                     </Alert>
                 )}
-                <div className="mb-4 flex items-center gap-2">
+                <div className="mb-4 flex items-center justify-between gap-2">
                     <Input
                         type="text"
                         value={globalFilter}

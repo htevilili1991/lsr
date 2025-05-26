@@ -19,6 +19,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Resource routes with constraints
     Route::resource('registry', RegistryController::class)->where(['registry' => '[0-9]+']);
+    Route::get('/registry/export', [RegistryController::class, 'export'])->name('registry.export');
 });
 
 require __DIR__.'/settings.php';
