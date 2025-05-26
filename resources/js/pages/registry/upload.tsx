@@ -1,16 +1,11 @@
-import React from 'react';
 import { Head, useForm, usePage } from '@inertiajs/react';
-import { PageProps } from '@/types';
+import { PageProps, User, BreadcrumbItem } from '@/types';
 import AppLayout from '@/layouts/app-layout';
+import React from 'react';
 
 interface Props extends PageProps {
     auth: {
-        user: {
-            id: number;
-            name: string;
-            email: string;
-            avatar?: string;
-        } | null;
+        user: User | null;
     };
     errors: {
         csv_file?: string;
@@ -39,13 +34,13 @@ const Upload: React.FC = () => {
         });
     };
 
-    const breadcrumbs = [
+    const breadcrumbs: BreadcrumbItem[] = [
         { href: '/dashboard', label: 'Dashboard' },
         { href: '/registry/upload', label: 'Upload Registry CSV' },
     ];
 
     return (
-        <AppLayout title="Upload Registry CSV" auth={auth} breadcrumbs={breadcrumbs}>
+        <AppLayout auth={auth} breadcrumbs={breadcrumbs}>
             <Head title="Upload Registry CSV" />
             <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 py-12">
                 <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">

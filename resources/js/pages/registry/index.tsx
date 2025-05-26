@@ -70,14 +70,18 @@ export default function Registry({ auth, registry }: Props) {
     const { flash } = usePage<{ flash?: { success?: string; error?: string } }>().props;
     const flashMessage = flash?.success || flash?.error;
     const [showAlert, setShowAlert] = useState(!!flashMessage);
+    const [exportError, setExportError] = useState<string | null>(null);
 
     useEffect(() => {
-        if (flashMessage) {
+        if (flashMessage || exportError) {
             setShowAlert(true);
-            const timer = setTimeout(() => setShowAlert(false), 4000);
+            const timer = setTimeout(() => {
+                setShowAlert(false);
+                setExportError(null);
+            }, 4000);
             return () => clearTimeout(timer);
         }
-    }, [flashMessage]);
+    }, [flashMessage, exportError]);
 
     const columns: ColumnDef<Registry>[] = React.useMemo(
         () => [
@@ -170,7 +174,6 @@ export default function Registry({ auth, registry }: Props) {
         });
     }, [globalFilter, table]);
 
-    // Debounce search submission
     useEffect(() => {
         const timer = setTimeout(() => {
             if (globalFilter !== initialSearch) {
@@ -180,7 +183,6 @@ export default function Registry({ auth, registry }: Props) {
         return () => clearTimeout(timer);
     }, [globalFilter, initialSearch, handleSearchSubmit]);
 
-    // Export all filtered data to CSV
     const exportToCSV = async () => {
         try {
             const response = await fetch(`/registry/export?search=${encodeURIComponent(globalFilter)}`, {
@@ -240,8 +242,8 @@ export default function Registry({ auth, registry }: Props) {
             URL.revokeObjectURL(url);
         } catch (error) {
             console.error('Export failed:', error);
+            setExportError('Failed to export data. Please try again.');
             setShowAlert(true);
-            flash.error = 'Failed to export data. Please try again.';
         }
     };
 
@@ -249,17 +251,22 @@ export default function Registry({ auth, registry }: Props) {
         <AppLayout breadcrumbs={breadcrumbs} auth={auth}>
             <Head title="Registry" />
             <div className="relative flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                {showAlert && flashMessage && (
+                {showAlert && (flashMessage || exportError) && (
                     <Alert
-                        variant={flash.success ? 'default' : 'destructive'}
-                        className={`fixed top-4 right-4 z-40 max-w-md animate-in fade-in slide-in-from-top-2 duration-300 ${flash.success ? 'bg-green-600' : 'bg-red-600'} text-white shadow-lg rounded-lg ${!showAlert ? 'animate-out fade-out slide-out-to-top-2' : ''}`}
+                        variant={flash?.success ? 'default' : 'destructive'}
+                        className={`fixed top-4 right-4 z-40 max-w-md animate-in fade-in slide-in-from-top-2 duration-300 ${
+                            flash?.success ? 'bg-green-600' : 'bg-red-600'
+                        } text-white shadow-lg rounded-lg ${!showAlert ? 'animate-out fade-out slide-out-to-top-2' : ''}`}
                     >
                         <AlertDescription className="text-white pr-8">
-                            {flash.success ? 'Success! ' : 'Error! '}
-                            {flashMessage}
+                            {flash?.success ? 'Success! ' : 'Error! '}
+                            {flashMessage || exportError}
                         </AlertDescription>
                         <button
-                            onClick={() => setShowAlert(false)}
+                            onClick={() => {
+                                setShowAlert(false);
+                                setExportError(null);
+                            }}
                             className="absolute top-2 right-2 text-white hover:text-gray-200 focus:outline-none"
                             aria-label="Close alert"
                         >
