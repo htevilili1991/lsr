@@ -2,11 +2,14 @@ import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
-import { type NavItem } from '@/types';
-import { Link } from '@inertiajs/react';
-import {BookOpen, FileIcon, FileInput, Folder, LayoutGrid, UploadIcon} from 'lucide-react';
+import { type NavItem, type PageProps, type User } from '@/types';
+import { Link, usePage } from '@inertiajs/react';
+import { BookOpen, FileIcon, LayoutGrid, UploadIcon, Users } from 'lucide-react';
 import AppLogo from './app-logo';
-import upload from "@/pages/registry/upload";
+
+interface Props extends PageProps {
+    auth: { user: User | null };
+}
 
 const mainNavItems: NavItem[] = [
     {
@@ -24,7 +27,12 @@ const mainNavItems: NavItem[] = [
         href: '/registry/upload',
         icon: UploadIcon,
     },
-
+    {
+        title: 'Group Management',
+        href: '/groups',
+        icon: Users,
+        permission: 'view groups',
+    },
 ];
 
 const footerNavItems: NavItem[] = [
@@ -36,6 +44,13 @@ const footerNavItems: NavItem[] = [
 ];
 
 export function AppSidebar() {
+    const { auth } = usePage<Props>().props;
+
+    // Filter nav items based on permissions
+    const filteredMainNavItems = mainNavItems.filter(item =>
+        !item.permission || auth.user?.permissions?.includes(item.permission)
+    );
+
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
@@ -51,7 +66,7 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain items={mainNavItems} />
+                <NavMain items={filteredMainNavItems} />
             </SidebarContent>
 
             <SidebarFooter>
