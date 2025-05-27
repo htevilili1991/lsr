@@ -226,7 +226,7 @@ class RegistryController extends Controller
     public function update(Request $request, string $id)
     {
         try {
-            \Log::info('Update request data:', $request->all());
+            Log::info('Update request data for Registry ID ' . $id, $request->all());
             $registry = Registry::findOrFail($id);
             $validated = $request->validate([
                 'surname' => 'required|string|max:255',
@@ -246,12 +246,12 @@ class RegistryController extends Controller
                 'border_post' => 'required|string|max:255',
                 'destination_coming_from' => 'required|string|max:255',
             ]);
-            \Log::info('Validated data:', $validated);
+            Log::info('Validated data for Registry ID ' . $id, $validated);
             $registry->update($validated);
-            \Log::info('Record updated:', $registry->toArray());
+            Log::info('Registry record updated', ['id' => $registry->id, 'changes' => $registry->getChanges()]);
             return Redirect::route('registry.index')->with('success', 'Record updated successfully.');
         } catch (\Exception $e) {
-            \Log::error('Error updating registry record: ' . $e->getMessage());
+            Log::error('Error updating Registry record ID ' . $id . ': ' . $e->getMessage());
             return Inertia::render('Error', [
                 'message' => 'Unable to update registry record.',
             ]);
@@ -265,11 +265,12 @@ class RegistryController extends Controller
     {
         try {
             $registry = Registry::findOrFail($id);
-            \Log::info('Deleting registry record:', $registry->toArray());
+            Log::info('Deleting Registry record', ['id' => $id]);
             $registry->delete();
+            Log::info('Registry record deleted', ['id' => $id]);
             return Redirect::route('registry.index')->with('success', 'Record deleted successfully.');
         } catch (\Exception $e) {
-            \Log::error('Error deleting registry record: ' . $e->getMessage());
+            Log::error('Error deleting Registry record ID ' . $id . ': ' . $e->getMessage());
             return Inertia::render('Error', [
                 'message' => 'Unable to delete registry record.',
             ]);
@@ -308,8 +309,6 @@ class RegistryController extends Controller
 
             $file = $request->file('csv_file');
             $path = $file->store('uploads', 'local');
-
-            // Read the CSV
             $handle = fopen(Storage::disk('local')->path($path), 'r');
             $header = fgetcsv($handle); // Read header row
 
@@ -327,7 +326,7 @@ class RegistryController extends Controller
                 return Redirect::back()->withErrors(['csv_file' => 'Invalid CSV headers. Expected: ' . implode(', ', $expectedHeaders)]);
             }
 
-            $records = [];
+            $recordsCreated = 0;
             while (($row = fgetcsv($handle)) !== false) {
                 // Skip if document_no already exists
                 if (Registry::where('document_no', $row[5])->exists()) {
@@ -335,39 +334,40 @@ class RegistryController extends Controller
                     continue;
                 }
 
-                $records[] = [
-                    'surname' => $row[0],
-                    'given_name' => $row[1],
-                    'nationality' => $row[2],
-                    'country_of_residence' => $row[3],
-                    'document_type' => $row[4],
-                    'document_no' => $row[5],
-                    'dob' => !empty($row[6]) ? date('Y-m-d', strtotime(str_replace('/', '-', $row[6]))) : null,
-                    'age' => (int)$row[7],
-                    'sex' => $row[8],
-                    'travel_date' => !empty($row[9]) ? date('Y-m-d', strtotime(str_replace('/', '-', $row[9]))) : null,
-                    'direction' => $row[10],
-                    'accommodation_address' => $row[11],
-                    'note' => !empty($row[12]) ? $row[12] : null,
-                    'travel_reason' => $row[13],
-                    'border_post' => $row[14],
-                    'destination_coming_from' => $row[15],
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ];
+                // Create record with validation
+                try {
+                    Registry::create([
+                        'surname' => $row[0] ?? '',
+                        'given_name' => $row[1] ?? '',
+                        'nationality' => $row[2] ?? '',
+                        'country_of_residence' => $row[3] ?? '',
+                        'document_type' => $row[4] ?? '',
+                        'document_no' => $row[5] ?? '',
+                        'dob' => !empty($row[6]) ? date('Y-m-d', strtotime(str_replace('/', '-', $row[6]))) : null,
+                        'age' => (int)($row[7] ?? 0),
+                        'sex' => $row[8] ?? '',
+                        'travel_date' => !empty($row[9]) ? date('Y-m-d', strtotime(str_replace('/', '-', $row[9]))) : null,
+                        'direction' => $row[10] ?? '',
+                        'accommodation_address' => $row[11] ?? '',
+                        'note' => !empty($row[12]) ? $row[12] : null,
+                        'travel_reason' => $row[13] ?? '',
+                        'border_post' => $row[14] ?? '',
+                        'destination_coming_from' => $row[15] ?? '',
+                    ]);
+                    $recordsCreated++;
+                } catch (\Exception $e) {
+                    Log::warning('Failed to create Registry record from CSV row: ' . $e->getMessage(), ['row' => $row]);
+                    continue;
+                }
             }
             fclose($handle);
-
-            // Delete the temporary file
             Storage::disk('local')->delete($path);
 
-            // Insert records in chunks
-            foreach (array_chunk($records, 100) as $chunk) {
-                Registry::insert($chunk);
-            }
-
-            Log::info('CSV uploaded successfully', ['file' => $file->getClientOriginalName(), 'records' => count($records)]);
-            return Redirect::route('registry.index')->with('success', 'CSV uploaded and records inserted successfully.');
+            Log::info('CSV uploaded successfully', [
+                'file' => $file->getClientOriginalName(),
+                'records_created' => $recordsCreated,
+            ]);
+            return Redirect::route('registry.index')->with('success', "CSV uploaded, $recordsCreated records created.");
         } catch (\Exception $e) {
             Log::error('Error processing CSV: ' . $e->getMessage());
             return Redirect::back()->withErrors(['csv_file' => 'Error processing CSV: ' . $e->getMessage()]);
