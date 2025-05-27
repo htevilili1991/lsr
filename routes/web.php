@@ -26,6 +26,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/registry/export', [RegistryController::class, 'export'])->name('registry.export');
 
     Route::get('/audits', [AuditController::class, 'index'])->name('audits.index');
+    Route::delete('/audits', [AuditController::class, 'clear'])->middleware(['auth'])->name('audits.clear');
 
 });
 

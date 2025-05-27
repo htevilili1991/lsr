@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Head, usePage } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type User, type RegistryAuditValues } from '@/types';
 import { PaginatedResponse } from '@/types';
@@ -44,6 +44,21 @@ const AuditIndex: React.FC<Props> = ({ auth, audits: initialAudits }) => {
         }
     }, [flashMessage]);
 
+    const handleClearLogs = () => {
+        if (window.confirm('Are you sure you want to clear all audit logs? This action cannot be undone.')) {
+            router.delete('/audits', {
+                onSuccess: () => {
+                    setAlertMessage('Audit logs cleared successfully.');
+                    setShowAlert(true);
+                },
+                onError: () => {
+                    setAlertMessage('Failed to clear audit logs.');
+                    setShowAlert(true);
+                },
+            });
+        }
+    };
+
     const columns: ColumnDef<Audit>[] = React.useMemo(
         () => [
             {
@@ -58,7 +73,7 @@ const AuditIndex: React.FC<Props> = ({ auth, audits: initialAudits }) => {
                 accessorFn: (row) =>
                     JSON.stringify(row.event !== 'deleted' ? row.new_values : row.old_values, null, 2).replace(
                         /</g,
-                        '<'
+                        '&lt;'
                     ),
                 cell: ({ getValue }) => <pre className="text-sm">{getValue() as string}</pre>,
                 enableSorting: false,
@@ -135,6 +150,14 @@ const AuditIndex: React.FC<Props> = ({ auth, audits: initialAudits }) => {
                     </div>
                 ) : (
                     <div className="border-sidebar-border/70 dark:border-sidebar-border overflow-x-auto rounded-xl border z-0">
+                        <div className="flex justify-end p-4">
+                            <button
+                                onClick={handleClearLogs}
+                                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                            >
+                                Clear Logs
+                            </button>
+                        </div>
                         <table className="min-w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                             {table.getHeaderGroups().map((headerGroup) => (
@@ -149,11 +172,11 @@ const AuditIndex: React.FC<Props> = ({ auth, audits: initialAudits }) => {
                                                 ? null
                                                 : flexRender(header.column.columnDef.header, header.getContext())}
                                             <span>
-                          {{
-                              asc: ' 🔼',
-                              desc: ' 🔽',
-                          }[header.column.getIsSorted() as string] ?? ''}
-                        </span>
+                                                {{
+                                                    asc: ' 🔼',
+                                                    desc: ' 🔽',
+                                                }[header.column.getIsSorted() as string] ?? ''}
+                                            </span>
                                         </th>
                                     ))}
                                 </tr>
@@ -176,9 +199,9 @@ const AuditIndex: React.FC<Props> = ({ auth, audits: initialAudits }) => {
                         </table>
                         <div className="flex items-center justify-between px-6 py-4">
                             <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-700">
-                  Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
-                </span>
+                                <span className="text-sm text-gray-700">
+                                    Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+                                </span>
                                 <select
                                     value={table.getState().pagination.pageSize}
                                     onChange={(e) => table.setPageSize(Number(e.target.value))}
