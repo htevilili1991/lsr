@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Head, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
-import { type BreadcrumbItem, type User } from '@/types';
+import { type BreadcrumbItem, type User, type RegistryAuditValues } from '@/types';
 import { PaginatedResponse } from '@/types';
 import Echo from 'laravel-echo';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -14,8 +14,8 @@ interface Audit {
     event: string;
     auditable_type: string;
     auditable_id: number;
-    old_values: Record<string, any> | null;
-    new_values: Record<string, any> | null;
+    old_values: RegistryAuditValues | null;
+    new_values: RegistryAuditValues | null;
     created_at: string;
 }
 
