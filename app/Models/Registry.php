@@ -18,7 +18,4 @@ class Registry extends Model implements Auditable
         'border_post', 'destination_coming_from',
     ];
 
-    protected $dispatchesEvents = [
-        'audited' => \App\Events\AuditLogged::class,
-    ];
 }

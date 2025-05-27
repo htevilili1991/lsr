@@ -3,7 +3,6 @@ import { Head, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type User, type RegistryAuditValues } from '@/types';
 import { PaginatedResponse } from '@/types';
-import Echo from 'laravel-echo';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { flexRender, getCoreRowModel, useReactTable, type ColumnDef } from '@tanstack/react-table';
 
@@ -34,7 +33,6 @@ const breadcrumbs: BreadcrumbItem[] = [
 const AuditIndex: React.FC<Props> = ({ auth, audits: initialAudits }) => {
     const { flash } = usePage<{ flash?: { success?: string; error?: string } }>().props;
     const flashMessage = flash?.success || flash?.error;
-    const [audits, setAudits] = useState<PaginatedResponse<Audit>>(initialAudits);
     const [showAlert, setShowAlert] = useState(!!flashMessage);
     const [alertMessage, setAlertMessage] = useState<string | null>(flashMessage || null);
 
@@ -45,32 +43,6 @@ const AuditIndex: React.FC<Props> = ({ auth, audits: initialAudits }) => {
             return () => clearTimeout(timer);
         }
     }, [flashMessage]);
-
-    useEffect(() => {
-        window.Echo = new Echo({
-            broadcaster: 'reverb',
-            key: import.meta.env.VITE_REVERB_APP_KEY,
-            wsHost: import.meta.env.VITE_REVERB_HOST,
-            wsPort: import.meta.env.VITE_REVERB_PORT,
-            wssPort: import.meta.env.VITE_REVERB_PORT,
-            forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
-            enabledTransports: ['ws', 'wss'],
-        });
-
-        window.Echo.channel('audits').listen('AuditLogged', (e: { audit: Audit }) => {
-            if (e.audit.auditable_type === 'App\\Models\\Registry') {
-                setAudits((prev) => ({
-                    ...prev,
-                    data: [e.audit, ...prev.data.slice(0, prev.meta.per_page - 1)],
-                }));
-                setAlertMessage('New audit log added.');
-                setShowAlert(true);
-                setTimeout(() => setShowAlert(false), 4000);
-            }
-        });
-
-        return () => window.Echo.leave('audits');
-    }, []);
 
     const columns: ColumnDef<Audit>[] = React.useMemo(
         () => [
@@ -102,17 +74,17 @@ const AuditIndex: React.FC<Props> = ({ auth, audits: initialAudits }) => {
     );
 
     const table = useReactTable<Audit>({
-        data: audits.data || [],
+        data: initialAudits.data || [],
         columns,
         getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: getCoreRowModel(),
         manualSorting: true,
         manualPagination: true,
-        pageCount: audits.meta.last_page,
+        pageCount: initialAudits.meta.last_page,
         initialState: {
             pagination: {
-                pageIndex: audits.meta.current_page - 1,
-                pageSize: audits.meta.per_page,
+                pageIndex: initialAudits.meta.current_page - 1,
+                pageSize: initialAudits.meta.per_page,
             },
         },
         state: {
@@ -144,7 +116,7 @@ const AuditIndex: React.FC<Props> = ({ auth, audits: initialAudits }) => {
                         </button>
                     </Alert>
                 )}
-                {audits.data.length === 0 ? (
+                {initialAudits.data.length === 0 ? (
                     <div className="text-center py-8">
                         <svg
                             className="mx-auto h-12 w-12 text-gray-400"
