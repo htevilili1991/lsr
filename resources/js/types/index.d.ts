@@ -6,8 +6,8 @@ export interface Auth {
 }
 
 export interface BreadcrumbItem {
-    title: string;
-    href: string | null;
+    label: string;
+    href: string;
 }
 
 export interface NavGroup {
@@ -36,10 +36,10 @@ export interface User {
     name: string;
     email: string;
     avatar?: string;
-    email_verified_at: string | null;
-    created_at: string;
-    updated_at: string;
-    [key: string]: unknown; // This allows for additional properties...
+    email_verified_at?: string | null;
+    created_at?: string;
+    updated_at?: string;
+    [key: string]: unknown;
 }
 
 export interface Registry {
@@ -65,7 +65,7 @@ export interface Registry {
 }
 
 export interface PageProps {
-    [key: string]: any;
+    [key: string]: unknown;
     auth?: {
         user: {
             id: number;
