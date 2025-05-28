@@ -7,7 +7,8 @@ import { flexRender } from '@tanstack/react-table';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { DownloadIcon } from 'lucide-react';
+import { DownloadIcon, ChevronDownIcon } from 'lucide-react';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem } from '@/components/ui/dropdown-menu';
 
 interface Registry {
     id: number;
@@ -87,9 +88,19 @@ export default function Registry({ auth, registry }: Props) {
         () => [
             { header: 'Surname', accessorKey: 'surname', enableSorting: true },
             { header: 'Given Name', accessorKey: 'given_name', enableSorting: true },
+            { header: 'Nationality', accessorKey: 'nationality', enableSorting: true },
+            { header: 'Country of Residence', accessorKey: 'country_of_residence', enableSorting: true },
+            { header: 'Document Type', accessorKey: 'document_type', enableSorting: true },
+            { header: 'Document Number', accessorKey: 'document_no', enableSorting: true },
+            { header: 'DoB', accessorKey: 'dob', enableSorting: true },
             { header: 'Sex', accessorKey: 'sex', enableSorting: true },
+            { header: 'Age', accessorKey: 'age', enableSorting: true },
             { header: 'Travel Date', accessorKey: 'travel_date', enableSorting: true },
+            { header: 'Direction', accessorKey: 'direction', enableSorting: true },
+            { header: 'Accommodation Address', accessorKey: 'accommodation_address', enableSorting: true },
+            { header: 'Note', accessorKey: 'note', enableSorting: true },
             { header: 'Travel Reason', accessorKey: 'travel_reason', enableSorting: true },
+            { header: 'Border Post', accessorKey: 'border_post', enableSorting: true },
             { header: 'Destination/Coming From', accessorKey: 'destination_coming_from', enableSorting: true },
             {
                 header: 'Actions',
@@ -143,6 +154,18 @@ export default function Registry({ auth, registry }: Props) {
             pagination: {
                 pageIndex: registry.meta.current_page - 1,
                 pageSize: registry.meta.per_page,
+            },
+            columnVisibility: {
+                nationality: false,
+                country_of_residence: false,
+                document_type: false,
+                document_no: false,
+                dob: false,
+                age: false,
+                direction: false,
+                accommodation_address: false,
+                note: false,
+                border_post: false,
             },
         },
         state: {
@@ -282,13 +305,37 @@ export default function Registry({ auth, registry }: Props) {
                         placeholder="Search registry..."
                         className="w-full max-w-md rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 text-sm"
                     />
-                    <Button
-                        onClick={exportToCSV}
-                        className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700"
-                    >
-                        <DownloadIcon className="h-4 w-4 mr-2" />
-                        Export to CSV
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                                >
+                                    Columns <ChevronDownIcon className="ml-2 h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                {table.getAllLeafColumns().map((column) => (
+                                    <DropdownMenuCheckboxItem
+                                        key={column.id}
+                                        checked={column.getIsVisible()}
+                                        onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                                        disabled={column.id === 'actions'} // Prevent hiding actions column
+                                    >
+                                        {column.columnDef.header as string}
+                                    </DropdownMenuCheckboxItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        <Button
+                            onClick={exportToCSV}
+                            className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700"
+                        >
+                            <DownloadIcon className="h-4 w-4 mr-2" />
+                            Export to CSV
+                        </Button>
+                    </div>
                 </div>
                 {registry.data?.length === 0 ? (
                     <div className="text-center py-8">
