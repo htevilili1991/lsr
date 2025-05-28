@@ -23,7 +23,8 @@
         "resources/js/**/*.ts",
         "resources/js/**/*.d.ts",
         "resources/js/**/*.tsx",
-        "vite.config.ts"
+        "vite.config.ts",
+        "types/**/*.d.ts"
     ],
     "exclude": ["node_modules", "public/build"]
 }

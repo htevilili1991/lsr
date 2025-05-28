@@ -25,6 +25,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('registry', RegistryController::class)->where(['registry' => '[0-9]+']);
     Route::get('/registry/export', [RegistryController::class, 'export'])->name('registry.export');
 
+    Route::get('/registry/search', [RegistryController::class, 'search'])->middleware(['auth'])->name('registry.search');
+    Route::get('/registry/export', [RegistryController::class, 'export'])->middleware(['auth'])->name('registry.export');
+
     Route::get('/audits', [AuditController::class, 'index'])->name('audits.index');
     Route::delete('/audits', [AuditController::class, 'clear'])->middleware(['auth'])->name('audits.clear');
 
