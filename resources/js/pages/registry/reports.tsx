@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link, usePage, router } from '@inertiajs/react';
+import { useState, useEffect } from 'react';
+import { router, usePage } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -7,9 +7,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Download, FileText } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Download, FileText, AlertCircle, Save } from 'lucide-react';
+import AppLayout from '@/layouts/app-layout';
 
-interface Worker {
+interface Registry {
     surname: string;
     given_name: string;
     nationality: string;
@@ -28,8 +30,19 @@ interface Worker {
     destination_coming_from: string;
 }
 
+interface SavedReport {
+    id: number;
+    name: string;
+    selectedColumns: string[];
+    filters: Record<string, string>;
+    sortBy: string;
+    sortOrder: 'asc' | 'desc';
+}
+
 interface Props {
-    workers?: Worker[];
+    registries?: Registry[];
+    savedReports?: SavedReport[];
+    errors?: Record<string, string>;
 }
 
 const availableColumns = [
@@ -51,7 +64,7 @@ const availableColumns = [
     { id: 'destination_coming_from', label: 'Destination/Coming From' },
 ];
 
-export default function Reports({ workers = [] }: Props) {
+function Reports({ registries = [], savedReports = [], errors = {} }: Props) {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
     const [filters, setFilters] = useState({
@@ -64,6 +77,27 @@ export default function Reports({ workers = [] }: Props) {
     });
     const [sortBy, setSortBy] = useState('');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+    const [reportName, setReportName] = useState('');
+    const [formError, setFormError] = useState('');
+
+    // Reset form when dialog opens
+    useEffect(() => {
+        if (isDialogOpen) {
+            setFormError('');
+            setSelectedColumns([]);
+            setFilters({
+                nationality: '',
+                sex: '',
+                travel_date_from: '',
+                travel_date_to: '',
+                travel_reason: '',
+                direction: '',
+            });
+            setSortBy('');
+            setSortOrder('asc');
+            setReportName('');
+        }
+    }, [isDialogOpen]);
 
     const handleColumnChange = (columnId: string) => {
         setSelectedColumns((prev) =>
@@ -78,16 +112,68 @@ export default function Reports({ workers = [] }: Props) {
     };
 
     const handleCreateReport = () => {
+        if (selectedColumns.length === 0) {
+            setFormError('Please select at least one column.');
+            return;
+        }
         router.post('/registry/reports/generate', {
             selectedColumns,
             filters,
             sortBy,
             sortOrder,
+        }, {
+            onError: () => {
+                setFormError('Failed to generate report. Please check your inputs.');
+            },
+            onSuccess: () => {
+                setIsDialogOpen(false);
+            },
         });
-        setIsDialogOpen(false);
+    };
+
+    const handleSaveReport = () => {
+        if (!reportName) {
+            setFormError('Please provide a report name.');
+            return;
+        }
+        if (selectedColumns.length === 0) {
+            setFormError('Please select at least one column.');
+            return;
+        }
+        router.post('/registry/reports/save', {
+            name: reportName,
+            selectedColumns,
+            filters,
+            sortBy,
+            sortOrder,
+        }, {
+            onError: () => {
+                setFormError('Failed to save report. Please try again.');
+            },
+            onSuccess: () => {
+                setIsDialogOpen(false);
+            },
+        });
+    };
+
+    const handleLoadSavedReport = (report: SavedReport) => {
+        setSelectedColumns(report.selectedColumns);
+        setFilters(report.filters);
+        setSortBy(report.sortBy);
+        setSortOrder(report.sortOrder);
+        router.post('/registry/reports/generate', {
+            selectedColumns: report.selectedColumns,
+            filters: report.filters,
+            sortBy: report.sortBy,
+            sortOrder: report.sortOrder,
+        });
     };
 
     const handleExport = (format: 'csv' | 'pdf') => {
+        if (selectedColumns.length === 0) {
+            setFormError('Please generate a report before exporting.');
+            return;
+        }
         router.post(`/registry/reports/export/${format}`, {
             selectedColumns,
             filters,
@@ -103,6 +189,40 @@ export default function Reports({ workers = [] }: Props) {
                     <CardTitle>Reports</CardTitle>
                 </CardHeader>
                 <CardContent>
+                    {errors && Object.keys(errors).length > 0 && (
+                        <Alert variant="destructive" className="mb-4">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertDescription>
+                                {Object.values(errors)[0]}
+                            </AlertDescription>
+                        </Alert>
+                    )}
+                    {formError && (
+                        <Alert variant="destructive" className="mb-4">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertDescription>{formError}</AlertDescription>
+                        </Alert>
+                    )}
+
+                    {/* Saved Reports */}
+                    {savedReports.length > 0 && (
+                        <div className="mb-6">
+                            <h3 className="text-lg font-medium mb-2">Saved Reports</h3>
+                            <div className="space-y-2">
+                                {savedReports.map((report) => (
+                                    <Button
+                                        key={report.id}
+                                        variant="outline"
+                                        className="w-full text-left"
+                                        onClick={() => handleLoadSavedReport(report)}
+                                    >
+                                        {report.name}
+                                    </Button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
                             <Button>Create Report</Button>
@@ -112,6 +232,16 @@ export default function Reports({ workers = [] }: Props) {
                                 <DialogTitle>Create New Report</DialogTitle>
                             </DialogHeader>
                             <div className="space-y-6">
+                                {/* Report Name */}
+                                <div>
+                                    <label className="block text-sm font-medium">Report Name (Optional)</label>
+                                    <Input
+                                        value={reportName}
+                                        onChange={(e) => setReportName(e.target.value)}
+                                        placeholder="e.g., Monthly Worker Report"
+                                    />
+                                </div>
+
                                 {/* Column Selection */}
                                 <div>
                                     <h3 className="text-lg font-medium">Select Columns</h3>
@@ -244,14 +374,20 @@ export default function Reports({ workers = [] }: Props) {
                                     </div>
                                 </div>
 
-                                <Button onClick={handleCreateReport}>Generate Report</Button>
+                                <div className="flex space-x-2">
+                                    <Button onClick={handleCreateReport}>Generate Report</Button>
+                                    <Button variant="outline" onClick={handleSaveReport}>
+                                        <Save className="h-4 w-4 mr-2" />
+                                        Save Report
+                                    </Button>
+                                </div>
                             </div>
                         </DialogContent>
                     </Dialog>
 
                     {/* Report Preview */}
-                    {workers.length > 0 && (
-                        <div className="mt-6">
+                    {registries.length > 0 && (
+                        <div className="mt-2">
                             <div className="flex justify-end space-x-2 mb-4">
                                 <Button variant="outline" onClick={() => handleExport('csv')}>
                                     <Download className="h-4 w-4 mr-2" />
@@ -273,10 +409,10 @@ export default function Reports({ workers = [] }: Props) {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {workers.map((worker, index) => (
+                                    {registries.map((registry, index) => (
                                         <TableRow key={index}>
                                             {selectedColumns.map((col) => (
-                                                <TableCell key={col}>{worker[col]}</TableCell>
+                                                <TableCell key={col}>{registry[col]}</TableCell>
                                             ))}
                                         </TableRow>
                                     ))}
@@ -289,3 +425,8 @@ export default function Reports({ workers = [] }: Props) {
         </div>
     );
 }
+
+// Apply the AppLayout to the Reports page
+Reports.layout = page => <AppLayout children={page} />;
+
+export default Reports;

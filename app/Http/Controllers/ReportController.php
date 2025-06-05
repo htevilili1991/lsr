@@ -3,9 +3,10 @@
 namespace App\Http\Controllers;
 
 use Inertia\Inertia;
-use App\Models\Worker;
+use App\Models\Registry;
+use App\Models\ReportConfig;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use League\Csv\Writer;
 use Barryvdh\DomPDF\Facade\Pdf;
 
@@ -13,19 +14,38 @@ class ReportController extends Controller
 {
     public function index()
     {
+        $savedReports = ReportConfig::where('user_id', Auth::id())->get()->map(function ($report) {
+            return [
+                'id' => $report->id,
+                'name' => $report->name,
+                'selectedColumns' => json_decode($report->selected_columns, true),
+                'filters' => json_decode($report->filters, true),
+                'sortBy' => $report->sort_by,
+                'sortOrder' => $report->sort_order,
+            ];
+        });
+
         return Inertia::render('Registry/Reports', [
-            'workers' => [], // Initial empty state
+            'registries' => [],
+            'savedReports' => $savedReports,
         ]);
     }
 
     public function generate(Request $request)
     {
+        $request->validate([
+            'selectedColumns' => 'required|array|min:1',
+            'filters' => 'array',
+            'sortBy' => 'string|nullable',
+            'sortOrder' => 'in:asc,desc|nullable',
+        ]);
+
         $selectedColumns = $request->input('selectedColumns', []);
         $filters = $request->input('filters', []);
         $sortBy = $request->input('sortBy', '');
         $sortOrder = $request->input('sortOrder', 'asc');
 
-        $query = Worker::query();
+        $query = Registry::query();
 
         // Apply filters
         if (!empty($filters['nationality'])) {
@@ -53,21 +73,62 @@ class ReportController extends Controller
         }
 
         // Select only requested columns
-        $workers = $query->select($selectedColumns)->get();
+        $registries = $query->select($selectedColumns)->get();
+
+        $savedReports = ReportConfig::where('user_id', Auth::id())->get()->map(function ($report) {
+            return [
+                'id' => $report->id,
+                'name' => $report->name,
+                'selectedColumns' => json_decode($report->selected_columns, true),
+                'filters' => json_decode($report->filters, true),
+                'sortBy' => $report->sort_by,
+                'sortOrder' => $report->sort_order,
+            ];
+        });
 
         return Inertia::render('Registry/Reports', [
-            'workers' => $workers,
+            'registries' => $registries,
+            'savedReports' => $savedReports,
         ]);
+    }
+
+    public function save(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'selectedColumns' => 'required|array|min:1',
+            'filters' => 'array',
+            'sortBy' => 'string|nullable',
+            'sortOrder' => 'in:asc,desc|nullable',
+        ]);
+
+        ReportConfig::create([
+            'user_id' => Auth::id(),
+            'name' => $request->input('name'),
+            'selected_columns' => json_encode($request->input('selectedColumns')),
+            'filters' => json_encode($request->input('filters')),
+            'sort_by' => $request->input('sortBy', ''),
+            'sort_order' => $request->input('sortOrder', 'asc'),
+        ]);
+
+        return redirect()->route('reports.index');
     }
 
     public function export(Request $request, $format)
     {
+        $request->validate([
+            'selectedColumns' => 'required|array|min:1',
+            'filters' => 'array',
+            'sortBy' => 'string|nullable',
+            'sortOrder' => 'in:asc,desc|nullable',
+        ]);
+
         $selectedColumns = $request->input('selectedColumns', []);
         $filters = $request->input('filters', []);
         $sortBy = $request->input('sortBy', '');
         $sortOrder = $request->input('sortOrder', 'asc');
 
-        $query = Worker::query();
+        $query = Registry::query();
 
         // Apply filters
         if (!empty($filters['nationality'])) {
@@ -94,12 +155,12 @@ class ReportController extends Controller
             $query->orderBy($sortBy, $sortOrder);
         }
 
-        $workers = $query->select($selectedColumns)->get()->toArray();
+        $registries = $query->select($selectedColumns)->get()->toArray();
 
         if ($format === 'csv') {
             $csv = Writer::createFromString();
             $csv->insertOne($selectedColumns);
-            $csv->insertAll($workers);
+            $csv->insertAll($registries);
             return response($csv->toString(), 200, [
                 'Content-Type' => 'text/csv',
                 'Content-Disposition' => 'attachment; filename="report.csv"',
@@ -107,11 +168,11 @@ class ReportController extends Controller
         } elseif ($format === 'pdf') {
             $pdf = Pdf::loadView('pdf.reports', [
                 'columns' => $selectedColumns,
-                'workers' => $workers,
+                'registries' => $registries,
             ]);
             return $pdf->download('report.pdf');
         }
 
-        return redirect()->back();
+        return redirect()->back()->withErrors(['format' => 'Invalid export format']);
     }
 }
