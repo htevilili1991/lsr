@@ -29,7 +29,7 @@ class ProfileController extends Controller
      */
     public function showProfile(Request $request): Response
     {
-        return Inertia::render('Settings/Profile', [
+        return Inertia::render('Settings/profile', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => $request->session()->get('status'),
         ]);
