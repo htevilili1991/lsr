@@ -10,8 +10,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/settings/profile', [ProfileController::class, 'showProfile'])->name('settings.profile');
     Route::post('/settings/profile', [ProfileController::class, 'updateProfile'])->name('profile.update');
     Route::delete('/settings/profile', [ProfileController::class, 'destroyProfile'])->name('profile.destroy');
-    Route::get('/settings/password', [ProfileController::class, 'showPassword'])->name('settings.password');
-    Route::put('/settings/password', [ProfileController::class, 'updatePassword'])->name('password.update');
+    Route::get('/settings/password', [PasswordController::class, 'edit'])->name('settings.password');
+    Route::post('/settings/password', [PasswordController::class, 'update'])->name('password.update');
     Route::get('/settings/appearance', [ProfileController::class, 'showAppearance'])->name('settings.appearance');
 
     Route::middleware('admin')->group(function () {
