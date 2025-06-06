@@ -5,17 +5,19 @@ use App\Http\Controllers\Settings\ProfileController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-Route::middleware('auth')->group(function () {
-    Route::redirect('settings', 'settings/profile');
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/settings', [ProfileController::class, 'index'])->name('settings.index');
+    Route::get('/settings/profile', [ProfileController::class, 'showProfile'])->name('settings.profile');
+    Route::put('/settings/profile', [ProfileController::class, 'updateProfile'])->name('profile.update');
+    Route::delete('/settings/profile', [ProfileController::class, 'destroyProfile'])->name('profile.destroy');
+    Route::get('/settings/password', [ProfileController::class, 'showPassword'])->name('settings.password');
+    Route::put('/settings/password', [ProfileController::class, 'updatePassword'])->name('password.update');
+    Route::get('/settings/appearance', [ProfileController::class, 'showAppearance'])->name('settings.appearance');
 
-    Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('settings/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-
-    Route::get('settings/password', [PasswordController::class, 'edit'])->name('password.edit');
-    Route::put('settings/password', [PasswordController::class, 'update'])->name('password.update');
-
-    Route::get('settings/appearance', function () {
-        return Inertia::render('settings/appearance');
-    })->name('appearance');
+    Route::middleware('admin')->group(function () {
+        Route::get('/settings/users', [ProfileController::class, 'showUserManagement'])->name('settings.users');
+        Route::post('/settings/users', [ProfileController::class, 'storeUser'])->name('settings.users.store');
+        Route::patch('/settings/users/{user}', [ProfileController::class, 'updateUser'])->name('settings.users.update');
+        Route::delete('/settings/users/{user}', [ProfileController::class, 'destroyUser'])->name('settings.users.destroy');
+    });
 });

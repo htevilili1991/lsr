@@ -42,7 +42,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/audits', [AuditController::class, 'index'])->name('audits.index');
     Route::delete('/audits', [AuditController::class, 'clear'])->name('audits.clear');
+
+    // Include settings routes
+    require __DIR__.'/settings.php';
 });
 
-require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
