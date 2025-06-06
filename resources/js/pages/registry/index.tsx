@@ -64,7 +64,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function Registry({ auth, registry }: Props) {
-    const { url, props } = usePage();
+    const { url } = usePage();
     const searchParams = new URLSearchParams(url.split('?')[1] || '');
     const initialSearch = searchParams.get('search') || '';
     const [globalFilter, setGlobalFilter] = useState(initialSearch);
