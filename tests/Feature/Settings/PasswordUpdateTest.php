@@ -29,6 +29,5 @@ test('correct password must be provided to update password', function () {
         'password' => 'new-password',
         'password_confirmation' => 'new-password',
     ]);
-
     $response->assertSessionHasErrors('current_password')->assertRedirect('/settings/password');
 });
