@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Head, usePage } from '@inertiajs/react';
+import { Head, usePage, useForm } from '@inertiajs/react'; // Removed Inertia import
+import { Inertia } from '@inertiajs/inertia'; // Added correct import for Inertia
 import HeadingSmall from '@/components/heading-small';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import AppLayout from '@/layouts/app-layout';
@@ -27,36 +28,37 @@ interface User {
 export default function UserManagement() {
     const { auth, users } = usePage<SharedData & { users: User[] }>().props;
     const [open, setOpen] = useState(false);
-    const [name, setName] = useState('');
-    const [email, setEmail] = useState('');
-    const [role, setRole] = useState('user');
+
+    const { data, setData, post, processing, errors, reset } = useForm({
+        name: '',
+        email: '',
+        password: '',
+        role: 'user',
+    });
 
     const handleAddUser = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!name || !email) {
-            alert('Name and email are required');
+        if (!data.name || !data.email || !data.password) {
+            alert('Name, email, and password are required');
             return;
         }
-        fetch('/users', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, email, role }),
-        }).then(response => {
-            if (response.ok) {
+        post('/settings/users', {
+            data,
+            onSuccess: () => {
                 console.log('User added successfully');
                 setOpen(false);
-                setName('');
-                setEmail('');
-                setRole('user');
+                reset();
                 window.location.reload();
-            } else {
-                alert('Failed to add user');
-            }
+            },
+            onError: (err) => {
+                console.error('Errors:', err);
+                alert(Object.values(err).join(', ') || 'An error occurred while adding the user');
+            },
         });
     };
 
     const handleRoleChange = (userId: number, role: string) => {
-        fetch(`/users/${userId}/role`, {
+        fetch(`/settings/users/${userId}/role`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ role }),
@@ -68,13 +70,16 @@ export default function UserManagement() {
     };
 
     const handleDelete = (userId: number) => {
-        fetch(`/users/${userId}`, {
-            method: 'DELETE',
-        }).then(response => {
-            if (response.ok) {
+        console.log('Delete button clicked for userId:', userId);
+        Inertia.delete(`/settings/users/${userId}`, {
+            onSuccess: () => {
                 console.log(`Deleted user ${userId}`);
                 window.location.reload();
-            }
+            },
+            onError: (err) => {
+                console.error('Delete Errors:', err);
+                alert(Object.values(err).join(', ') || 'Failed to delete user');
+            },
         });
     };
 
@@ -89,7 +94,7 @@ export default function UserManagement() {
                             <DialogTrigger asChild>
                                 <Button>Add User</Button>
                             </DialogTrigger>
-                            <DialogContent>
+                            <DialogContent aria-describedby="dialog-description">
                                 <DialogHeader>
                                     <DialogTitle>Add New User</DialogTitle>
                                 </DialogHeader>
@@ -98,26 +103,40 @@ export default function UserManagement() {
                                         <Label htmlFor="name">Name</Label>
                                         <Input
                                             id="name"
-                                            value={name}
-                                            onChange={(e) => setName(e.target.value)}
+                                            value={data.name}
+                                            onChange={(e) => setData('name', e.target.value)}
                                             placeholder="Enter name"
                                             required
                                         />
+                                        {errors.name && <p className="text-red-500 text-sm">{errors.name}</p>}
                                     </div>
                                     <div>
                                         <Label htmlFor="email">Email</Label>
                                         <Input
                                             id="email"
                                             type="email"
-                                            value={email}
-                                            onChange={(e) => setEmail(e.target.value)}
+                                            value={data.email}
+                                            onChange={(e) => setData('email', e.target.value)}
                                             placeholder="Enter email"
                                             required
                                         />
+                                        {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="password">Password</Label>
+                                        <Input
+                                            id="password"
+                                            type="password"
+                                            value={data.password}
+                                            onChange={(e) => setData('password', e.target.value)}
+                                            placeholder="Enter password"
+                                            required
+                                        />
+                                        {errors.password && <p className="text-red-500 text-sm">{errors.password}</p>}
                                     </div>
                                     <div>
                                         <Label htmlFor="role">Role</Label>
-                                        <Select value={role} onValueChange={setRole}>
+                                        <Select value={data.role} onValueChange={(value) => setData('role', value)}>
                                             <SelectTrigger id="role">
                                                 <SelectValue placeholder="Select role" />
                                             </SelectTrigger>
@@ -126,14 +145,20 @@ export default function UserManagement() {
                                                 <SelectItem value="user">User</SelectItem>
                                             </SelectContent>
                                         </Select>
+                                        {errors.role && <p className="text-red-500 text-sm">{errors.role}</p>}
                                     </div>
                                     <div className="flex justify-end space-x-2">
                                         <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                                             Cancel
                                         </Button>
-                                        <Button type="submit">Add User</Button>
+                                        <Button type="submit" disabled={processing}>
+                                            Add User
+                                        </Button>
                                     </div>
                                 </form>
+                                <p id="dialog-description" className="text-sm text-gray-500">
+                                    Add a new user by providing their name, email, password, and route.
+                                </p>
                             </DialogContent>
                         </Dialog>
                     </div>
