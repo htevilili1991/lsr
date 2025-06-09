@@ -14,7 +14,7 @@ import SettingsLayout from '@/layouts/settings/layout';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
-        title: 'Profile settings',
+        label: 'Profile settings',
         href: '/settings/profile',
     },
 ];
@@ -22,7 +22,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 type ProfileForm = {
     name: string;
     email: string;
-}
+};
 
 export default function Profile({ mustVerifyEmail, status }: { mustVerifyEmail: boolean; status?: string }) {
     const { auth } = usePage<SharedData>().props;
@@ -34,24 +34,20 @@ export default function Profile({ mustVerifyEmail, status }: { mustVerifyEmail: 
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-
         patch(route('profile.update'), {
             preserveScroll: true,
         });
     };
 
     return (
-        <AppLayout breadcrumbs={breadcrumbs}>
+        <AppLayout breadcrumbs={breadcrumbs} auth={auth}>
             <Head title="Profile settings" />
-
             <SettingsLayout>
                 <div className="space-y-6">
                     <HeadingSmall title="Profile information" description="Update your name and email address" />
-
                     <form onSubmit={submit} className="space-y-6">
                         <div className="grid gap-2">
                             <Label htmlFor="name">Name</Label>
-
                             <Input
                                 id="name"
                                 className="mt-1 block w-full"
@@ -61,13 +57,10 @@ export default function Profile({ mustVerifyEmail, status }: { mustVerifyEmail: 
                                 autoComplete="name"
                                 placeholder="Full name"
                             />
-
                             <InputError className="mt-2" message={errors.name} />
                         </div>
-
                         <div className="grid gap-2">
                             <Label htmlFor="email">Email address</Label>
-
                             <Input
                                 id="email"
                                 type="email"
@@ -78,10 +71,8 @@ export default function Profile({ mustVerifyEmail, status }: { mustVerifyEmail: 
                                 autoComplete="username"
                                 placeholder="Email address"
                             />
-
                             <InputError className="mt-2" message={errors.email} />
                         </div>
-
                         {mustVerifyEmail && auth.user.email_verified_at === null && (
                             <div>
                                 <p className="text-muted-foreground -mt-4 text-sm">
@@ -95,7 +86,6 @@ export default function Profile({ mustVerifyEmail, status }: { mustVerifyEmail: 
                                         Click here to resend the verification email.
                                     </Link>
                                 </p>
-
                                 {status === 'verification-link-sent' && (
                                     <div className="mt-2 text-sm font-medium text-green-600">
                                         A new verification link has been sent to your email address.
@@ -103,10 +93,8 @@ export default function Profile({ mustVerifyEmail, status }: { mustVerifyEmail: 
                                 )}
                             </div>
                         )}
-
                         <div className="flex items-center gap-4">
                             <Button disabled={processing}>Save</Button>
-
                             <Transition
                                 show={recentlySuccessful}
                                 enter="transition ease-in-out"
@@ -118,9 +106,8 @@ export default function Profile({ mustVerifyEmail, status }: { mustVerifyEmail: 
                             </Transition>
                         </div>
                     </form>
+                    <DeleteUser />
                 </div>
-
-                <DeleteUser />
             </SettingsLayout>
         </AppLayout>
     );

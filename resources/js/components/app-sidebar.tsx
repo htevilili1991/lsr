@@ -4,7 +4,7 @@ import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import {BookOpen, FileIcon, LayoutGrid, UploadIcon} from 'lucide-react';
+import { BarChart2Icon, BookOpen, FileIcon, HistoryIcon, LayoutGrid, UploadIcon } from 'lucide-react';
 import AppLogo from './app-logo';
 
 const mainNavItems: NavItem[] = [
@@ -19,11 +19,20 @@ const mainNavItems: NavItem[] = [
         icon: FileIcon,
     },
     {
+        title: 'Reports',
+        href: '/registry/reports',
+        icon: BarChart2Icon,
+    },
+    {
         title: 'Upload Data',
         href: '/registry/upload',
         icon: UploadIcon,
     },
-
+    {
+        title: 'Audit Logs',
+        href: '/audits',
+        icon: HistoryIcon,
+    },
 ];
 
 const footerNavItems: NavItem[] = [

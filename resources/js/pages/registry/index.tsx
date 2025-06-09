@@ -7,7 +7,8 @@ import { flexRender } from '@tanstack/react-table';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { DownloadIcon } from 'lucide-react';
+import { DownloadIcon, ChevronDownIcon } from 'lucide-react';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem } from '@/components/ui/dropdown-menu';
 
 interface Registry {
     id: number;
@@ -71,25 +72,37 @@ export default function Registry({ auth, registry }: Props) {
     const flashMessage = flash?.success || flash?.error;
     const [showAlert, setShowAlert] = useState(!!flashMessage);
     const [exportError, setExportError] = useState<string | null>(null);
+    const [navigationError, setNavigationError] = useState<string | null>(null);
 
     useEffect(() => {
-        if (flashMessage || exportError) {
+        if (flashMessage || exportError || navigationError) {
             setShowAlert(true);
             const timer = setTimeout(() => {
                 setShowAlert(false);
                 setExportError(null);
+                setNavigationError(null);
             }, 4000);
             return () => clearTimeout(timer);
         }
-    }, [flashMessage, exportError]);
+    }, [flashMessage, exportError, navigationError]);
 
     const columns: ColumnDef<Registry>[] = React.useMemo(
         () => [
             { header: 'Surname', accessorKey: 'surname', enableSorting: true },
             { header: 'Given Name', accessorKey: 'given_name', enableSorting: true },
+            { header: 'Nationality', accessorKey: 'nationality', enableSorting: true },
+            { header: 'Country of Residence', accessorKey: 'country_of_residence', enableSorting: true },
+            { header: 'Document Type', accessorKey: 'document_type', enableSorting: true },
+            { header: 'Document Number', accessorKey: 'document_no', enableSorting: true },
+            { header: 'DoB', accessorKey: 'dob', enableSorting: true },
             { header: 'Sex', accessorKey: 'sex', enableSorting: true },
+            { header: 'Age', accessorKey: 'age', enableSorting: true },
             { header: 'Travel Date', accessorKey: 'travel_date', enableSorting: true },
+            { header: 'Direction', accessorKey: 'direction', enableSorting: true },
+            { header: 'Accommodation Address', accessorKey: 'accommodation_address', enableSorting: true },
+            { header: 'Note', accessorKey: 'note', enableSorting: true },
             { header: 'Travel Reason', accessorKey: 'travel_reason', enableSorting: true },
+            { header: 'Border Post', accessorKey: 'border_post', enableSorting: true },
             { header: 'Destination/Coming From', accessorKey: 'destination_coming_from', enableSorting: true },
             {
                 header: 'Actions',
@@ -144,6 +157,18 @@ export default function Registry({ auth, registry }: Props) {
                 pageIndex: registry.meta.current_page - 1,
                 pageSize: registry.meta.per_page,
             },
+            columnVisibility: {
+                nationality: false,
+                country_of_residence: false,
+                document_type: false,
+                document_no: false,
+                dob: false,
+                age: false,
+                direction: false,
+                accommodation_address: false,
+                note: false,
+                border_post: false,
+            },
         },
         state: {
             globalFilter,
@@ -153,24 +178,84 @@ export default function Registry({ auth, registry }: Props) {
         onSortingChange: (updater) => {
             const newSorting = typeof updater === 'function' ? updater(table.getState().sorting) : updater;
             const sortParams = newSorting.length > 0 ? `${newSorting[0].id}:${newSorting[0].desc ? 'desc' : 'asc'}` : '';
-            router.visit(`/registry?page=${table.getState().pagination.pageIndex + 1}&per_page=${table.getState().pagination.pageSize}&sort=${sortParams}&search=${globalFilter}`, {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            if (!csrfToken) {
+                console.error('CSRF token missing during sorting');
+                setNavigationError('CSRF token is missing. Please refresh the page.');
+                return;
+            }
+            console.log('Navigating with sorting:', { page: table.getState().pagination.pageIndex + 1, per_page: table.getState().pagination.pageSize, sort: sortParams, search: globalFilter });
+            router.visit(`/registry?page=${table.getState().pagination.pageIndex + 1}&per_page=${table.getState().pagination.pageSize}&sort=${sortParams}&search=${encodeURIComponent(globalFilter)}`, {
                 preserveState: true,
                 preserveScroll: true,
+                headers: { 'X-CSRF-TOKEN': csrfToken },
+                onError: (errors) => {
+                    console.error('Navigation error (sorting):', errors);
+                    setNavigationError('Failed to sort: ' + (Object.values(errors)[0] || 'Unknown error. Check console for details.'));
+                },
             });
         },
         onPaginationChange: (updater) => {
             const newPagination = typeof updater === 'function' ? updater(table.getState().pagination) : updater;
-            router.visit(`/registry?page=${newPagination.pageIndex + 1}&per_page=${newPagination.pageSize}&sort=${table.getState().sorting[0]?.id || ''}:${table.getState().sorting[0]?.desc ? 'desc' : 'asc'}&search=${globalFilter}`, {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            if (!csrfToken) {
+                console.error('CSRF token missing during pagination');
+                setNavigationError('CSRF token is missing. Please refresh the page.');
+                return;
+            }
+            console.log('Navigating with pagination:', { page: newPagination.pageIndex + 1, per_page: newPagination.pageSize, sort: table.getState().sorting[0]?.id || '', search: globalFilter });
+            router.visit(`/registry?page=${newPagination.pageIndex + 1}&per_page=${newPagination.pageSize}&sort=${table.getState().sorting[0]?.id || ''}:${table.getState().sorting[0]?.desc ? 'desc' : 'asc'}&search=${encodeURIComponent(globalFilter)}`, {
                 preserveState: true,
                 preserveScroll: true,
+                headers: { 'X-CSRF-TOKEN': csrfToken },
+                onError: (errors) => {
+                    console.error('Navigation error (pagination):', errors);
+                    setNavigationError('Failed to change page: ' + (Object.values(errors)[0] || 'Unknown error. Check console for details.'));
+                    table.setPageIndex(registry.meta.current_page - 1); // Revert to server page on error
+                },
+                onSuccess: () => {
+                    console.log('Navigation successful');
+                },
             });
         },
     });
 
+    // Synchronize table's pageIndex with server-side current_page
+    useEffect(() => {
+        const newPageIndex = Math.max(0, registry.meta.current_page - 1);
+        if (table.getState().pagination.pageIndex !== newPageIndex) {
+            console.log('Syncing pageIndex:', { current: table.getState().pagination.pageIndex, new: newPageIndex });
+            table.setPageIndex(newPageIndex);
+        }
+    }, [registry.meta.current_page, table]);
+
+    // Debug table state
+    useEffect(() => {
+        console.log('Table state:', {
+            pageIndex: table.getState().pagination.pageIndex,
+            serverCurrentPage: registry.meta.current_page,
+            canPrevious: table.getCanPreviousPage(),
+            canNext: table.getCanNextPage(),
+            pageCount: table.getPageCount(),
+        });
+    }, [registry.meta.current_page, table]);
+
     const handleSearchSubmit = useCallback(() => {
-        router.visit(`/registry?page=1&per_page=${table.getState().pagination.pageSize}&sort=${table.getState().sorting[0]?.id || ''}:${table.getState().sorting[0]?.desc ? 'desc' : 'asc'}&search=${globalFilter}`, {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (!csrfToken) {
+            console.error('CSRF token missing during search');
+            setNavigationError('CSRF token is missing. Please refresh the page.');
+            return;
+        }
+        console.log('Navigating with search:', { page: 1, per_page: table.getState().pagination.pageSize, sort: table.getState().sorting[0]?.id || '', search: globalFilter });
+        router.visit(`/registry?page=1&per_page=${table.getState().pagination.pageSize}&sort=${table.getState().sorting[0]?.id || ''}:${table.getState().sorting[0]?.desc ? 'desc' : 'asc'}&search=${encodeURIComponent(globalFilter)}`, {
             preserveState: true,
             preserveScroll: true,
+            headers: { 'X-CSRF-TOKEN': csrfToken },
+            onError: (errors) => {
+                console.error('Navigation error (search):', errors);
+                setNavigationError('Failed to search: ' + (Object.values(errors)[0] || 'Unknown error. Check console for details.'));
+            },
         });
     }, [globalFilter, table]);
 
@@ -185,11 +270,17 @@ export default function Registry({ auth, registry }: Props) {
 
     const exportToCSV = async () => {
         try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            if (!csrfToken) {
+                console.error('CSRF token missing during export');
+                setExportError('CSRF token is missing. Please refresh the page.');
+                return;
+            }
             const response = await fetch(`/registry/export?search=${encodeURIComponent(globalFilter)}`, {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                    'X-CSRF-TOKEN': csrfToken,
                 },
             });
 
@@ -251,7 +342,7 @@ export default function Registry({ auth, registry }: Props) {
         <AppLayout breadcrumbs={breadcrumbs} auth={auth}>
             <Head title="Registry" />
             <div className="relative flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                {showAlert && (flashMessage || exportError) && (
+                {showAlert && (flashMessage || exportError || navigationError) && (
                     <Alert
                         variant={flash?.success ? 'default' : 'destructive'}
                         className={`fixed top-4 right-4 z-40 max-w-md animate-in fade-in slide-in-from-top-2 duration-300 ${
@@ -260,12 +351,13 @@ export default function Registry({ auth, registry }: Props) {
                     >
                         <AlertDescription className="text-white pr-8">
                             {flash?.success ? 'Success! ' : 'Error! '}
-                            {flashMessage || exportError}
+                            {flashMessage || exportError || navigationError || 'An unexpected error occurred.'}
                         </AlertDescription>
                         <button
                             onClick={() => {
                                 setShowAlert(false);
                                 setExportError(null);
+                                setNavigationError(null);
                             }}
                             className="absolute top-2 right-2 text-white hover:text-gray-200 focus:outline-none"
                             aria-label="Close alert"
@@ -282,13 +374,37 @@ export default function Registry({ auth, registry }: Props) {
                         placeholder="Search registry..."
                         className="w-full max-w-md rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 text-sm"
                     />
-                    <Button
-                        onClick={exportToCSV}
-                        className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700"
-                    >
-                        <DownloadIcon className="h-4 w-4 mr-2" />
-                        Export to CSV
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                                >
+                                    Columns <ChevronDownIcon className="ml-2 h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                {table.getAllLeafColumns().map((column) => (
+                                    <DropdownMenuCheckboxItem
+                                        key={column.id}
+                                        checked={column.getIsVisible()}
+                                        onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                                        disabled={column.id === 'actions'} // Prevent hiding actions column
+                                    >
+                                        {column.columnDef.header as string}
+                                    </DropdownMenuCheckboxItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        <Button
+                            onClick={exportToCSV}
+                            className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700"
+                        >
+                            <DownloadIcon className="h-4 w-4 mr-2" />
+                            Export to CSV
+                        </Button>
+                    </div>
                 </div>
                 {registry.data?.length === 0 ? (
                     <div className="text-center py-8">
