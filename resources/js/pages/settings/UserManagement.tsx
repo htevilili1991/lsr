@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
-import { Head, usePage, useForm } from '@inertiajs/react'; // Removed Inertia import
-import { Inertia } from '@inertiajs/inertia'; // Added correct import for Inertia
+import React, { useState, useEffect } from 'react';
+import { Head, usePage, useForm } from '@inertiajs/react';
 import HeadingSmall from '@/components/heading-small';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import AppLayout from '@/layouts/app-layout';
@@ -10,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -27,9 +27,12 @@ interface User {
 
 export default function UserManagement() {
     const { auth, users } = usePage<SharedData & { users: User[] }>().props;
+    const { flash } = usePage<{ flash?: { success?: string; error?: string } }>().props;
+    const flashMessage = flash?.success || flash?.error;
     const [open, setOpen] = useState(false);
+    const [showAlert, setShowAlert] = useState(!!flashMessage);
 
-    const { data, setData, post, processing, errors, reset } = useForm({
+    const { data, setData, post, processing, errors, reset, delete: formDelete } = useForm({ // Renamed to formDelete
         name: '',
         email: '',
         password: '',
@@ -43,16 +46,14 @@ export default function UserManagement() {
             return;
         }
         post('/settings/users', {
-            data,
             onSuccess: () => {
                 console.log('User added successfully');
                 setOpen(false);
                 reset();
                 window.location.reload();
             },
-            onError: (err) => {
+            onError: (err: Record<string, string>) => {
                 console.error('Errors:', err);
-                alert(Object.values(err).join(', ') || 'An error occurred while adding the user');
             },
         });
     };
@@ -71,23 +72,53 @@ export default function UserManagement() {
 
     const handleDelete = (userId: number) => {
         console.log('Delete button clicked for userId:', userId);
-        Inertia.delete(`/settings/users/${userId}`, {
+        formDelete(`/settings/users/${userId}`, { // Updated to use formDelete
             onSuccess: () => {
                 console.log(`Deleted user ${userId}`);
                 window.location.reload();
             },
-            onError: (err) => {
+            onError: (err: Record<string, string>) => {
                 console.error('Delete Errors:', err);
                 alert(Object.values(err).join(', ') || 'Failed to delete user');
             },
         });
     };
 
+    useEffect(() => {
+        if (flashMessage) {
+            setShowAlert(true);
+            const timer = setTimeout(() => {
+                setShowAlert(false);
+            }, 4000);
+            return () => clearTimeout(timer);
+        }
+    }, [flashMessage]);
+
     return (
         <AppLayout breadcrumbs={breadcrumbs} auth={auth}>
             <Head title="User Management" />
             <SettingsLayout>
                 <div className="space-y-6" style={{ maxWidth: '1152px', margin: '0 auto', padding: '0 16px', overflowX: 'hidden' }}>
+                    {showAlert && flashMessage && (
+                        <Alert
+                            variant={flash?.success ? 'default' : 'destructive'}
+                            className={`fixed top-4 right-4 z-40 max-w-md animate-in fade-in slide-in-from-top-2 duration-300 ${
+                                flash?.success ? 'bg-green-600' : 'bg-red-600'
+                            } text-white shadow-lg rounded-lg ${!showAlert ? 'animate-out fade-out slide-out-to-top-2' : ''}`}
+                        >
+                            <AlertDescription className="text-white pr-8">
+                                {flash?.success ? 'Success! ' : 'Error! '}
+                                {flashMessage}
+                            </AlertDescription>
+                            <button
+                                onClick={() => setShowAlert(false)}
+                                className="absolute top-2 right-2 text-white hover:text-gray-200 focus:outline-none"
+                                aria-label="Close alert"
+                            >
+                                ✕
+                            </button>
+                        </Alert>
+                    )}
                     <div className="flex justify-between items-center">
                         <HeadingSmall title="User Management" description="Manage users and their roles" />
                         <Dialog open={open} onOpenChange={setOpen}>
