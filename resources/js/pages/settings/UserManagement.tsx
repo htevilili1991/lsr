@@ -24,7 +24,6 @@ interface User {
     email: string;
     role: string;
 }
-
 export default function UserManagement() {
     const { auth, users } = usePage<SharedData & { users: User[] }>().props;
     const { flash } = usePage<{ flash?: { success?: string; error?: string } }>().props;
