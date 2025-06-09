@@ -18,16 +18,17 @@ class AddDefaultAdminUser extends Migration
             // No schema changes needed if table already exists
         });
 
-        // Check if default admin doesn't exist
+        // Overwrite or create the admin user
         $defaultEmail = 'htevilili@vanuatu.gov.vu';
-        if (!\App\Models\User::where('email', $defaultEmail)->exists()) {
-            \App\Models\User::create([
+        \App\Models\User::updateOrCreate(
+            ['email' => $defaultEmail], // Match on email
+            [
                 'name' => 'Herman Tevilili',
                 'email' => $defaultEmail,
-                'password' => Hash::make('Admin123!'), // Default password
+                'password' => Hash::make('Admin123!'),
                 'role' => 'admin',
-            ]);
-        }
+            ]
+        );
     }
 
     /**
@@ -37,7 +38,7 @@ class AddDefaultAdminUser extends Migration
      */
     public function down()
     {
-        // Optionally remove the default admin (for testing)
+        // Delete the user to reverse the migration
         $defaultEmail = 'htevilili@vanuatu.gov.vu';
         \App\Models\User::where('email', $defaultEmail)->delete();
     }
