@@ -32,12 +32,15 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
             href: '/settings/appearance',
             icon: null,
         },
-        {
-            title: 'User Management',
-            href: '/settings/users',
-            icon: null,
-        },
-
+        ...(isAdmin
+            ? [
+                {
+                    title: 'User Management',
+                    href: '/settings/users',
+                    icon: null,
+                },
+            ]
+            : []),
     ];
 
     const currentPath = window.location.pathname;
