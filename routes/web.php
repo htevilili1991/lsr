@@ -24,11 +24,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('upload', [RegistryController::class, 'upload'])->name('registry.upload');
         Route::post('upload', [RegistryController::class, 'storeCsv'])->name('registry.storeCsv');
 
-        // Reports routes
-        Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
-        Route::post('reports/generate', [ReportController::class, 'generate'])->name('reports.generate');
-        Route::post('reports/export/{format}', [ReportController::class, 'export'])->name('reports.export');
-
         // Resource routes with constraints
         Route::resource('/', RegistryController::class)
             ->where(['registry' => '[0-9]+'])

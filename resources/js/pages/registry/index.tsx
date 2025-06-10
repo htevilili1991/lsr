@@ -53,21 +53,19 @@ interface Props {
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
-    {
-        label: 'Dashboard',
-        href: '/dashboard',
-    },
-    {
-        label: 'Registry',
-        href: '/registry',
-    },
+    { label: 'Dashboard', href: '/dashboard' },
+    { label: 'Registry', href: '/registry' },
 ];
 
 export default function Registry({ auth, registry }: Props) {
     const { url } = usePage();
     const searchParams = new URLSearchParams(url.split('?')[1] || '');
     const initialSearch = searchParams.get('search') || '';
+    const initialDateFrom = searchParams.get('date_from') || '';
+    const initialDateTo = searchParams.get('date_to') || '';
     const [globalFilter, setGlobalFilter] = useState(initialSearch);
+    const [dateFrom, setDateFrom] = useState(initialDateFrom);
+    const [dateTo, setDateTo] = useState(initialDateTo);
     const { flash } = usePage<{ flash?: { success?: string; error?: string } }>().props;
     const flashMessage = flash?.success || flash?.error;
     const [showAlert, setShowAlert] = useState(!!flashMessage);
@@ -75,6 +73,12 @@ export default function Registry({ auth, registry }: Props) {
     const [navigationError, setNavigationError] = useState<string | null>(null);
 
     useEffect(() => {
+        console.log('Current URL parameters:', {
+            search: initialSearch,
+            date_from: initialDateFrom,
+            date_to: initialDateTo,
+            url: url,
+        });
         if (flashMessage || exportError || navigationError) {
             setShowAlert(true);
             const timer = setTimeout(() => {
@@ -184,14 +188,23 @@ export default function Registry({ auth, registry }: Props) {
                 setNavigationError('CSRF token is missing. Please refresh the page.');
                 return;
             }
-            console.log('Navigating with sorting:', { page: table.getState().pagination.pageIndex + 1, per_page: table.getState().pagination.pageSize, sort: sortParams, search: globalFilter });
-            router.visit(`/registry?page=${table.getState().pagination.pageIndex + 1}&per_page=${table.getState().pagination.pageSize}&sort=${sortParams}&search=${encodeURIComponent(globalFilter)}`, {
+            const queryParams = new URLSearchParams({
+                page: (table.getState().pagination.pageIndex + 1).toString(),
+                per_page: table.getState().pagination.pageSize.toString(),
+                sort: sortParams,
+                search: globalFilter,
+                ...(dateFrom && { date_from: dateFrom }),
+                ...(dateTo && { date_to: dateTo }),
+            });
+            const url = `/registry?${queryParams.toString()}`;
+            console.log('Navigating with sorting:', { url, globalFilter, dateFrom, dateTo });
+            router.visit(url, {
                 preserveState: true,
                 preserveScroll: true,
                 headers: { 'X-CSRF-TOKEN': csrfToken },
                 onError: (errors) => {
                     console.error('Navigation error (sorting):', errors);
-                    setNavigationError('Failed to sort: ' + (Object.values(errors)[0] || 'Unknown error. Check console for details.'));
+                    setNavigationError('Failed to sort: ' + (Object.values(errors)[0] || 'Unknown error.'));
                 },
             });
         },
@@ -203,41 +216,36 @@ export default function Registry({ auth, registry }: Props) {
                 setNavigationError('CSRF token is missing. Please refresh the page.');
                 return;
             }
-            console.log('Navigating with pagination:', { page: newPagination.pageIndex + 1, per_page: newPagination.pageSize, sort: table.getState().sorting[0]?.id || '', search: globalFilter });
-            router.visit(`/registry?page=${newPagination.pageIndex + 1}&per_page=${newPagination.pageSize}&sort=${table.getState().sorting[0]?.id || ''}:${table.getState().sorting[0]?.desc ? 'desc' : 'asc'}&search=${encodeURIComponent(globalFilter)}`, {
+            const sortParams = table.getState().sorting[0] ? `${table.getState().sorting[0].id}:${table.getState().sorting[0].desc ? 'desc' : 'asc'}` : '';
+            const queryParams = new URLSearchParams({
+                page: (newPagination.pageIndex + 1).toString(),
+                per_page: newPagination.pageSize.toString(),
+                sort: sortParams,
+                search: globalFilter,
+                ...(dateFrom && { date_from: dateFrom }),
+                ...(dateTo && { date_to: dateTo }),
+            });
+            const url = `/registry?${queryParams.toString()}`;
+            console.log('Navigating with pagination:', { url, globalFilter, dateFrom, dateTo });
+            router.visit(url, {
                 preserveState: true,
                 preserveScroll: true,
                 headers: { 'X-CSRF-TOKEN': csrfToken },
                 onError: (errors) => {
                     console.error('Navigation error (pagination):', errors);
-                    setNavigationError('Failed to change page: ' + (Object.values(errors)[0] || 'Unknown error. Check console for details.'));
-                    table.setPageIndex(registry.meta.current_page - 1); // Revert to server page on error
-                },
-                onSuccess: () => {
-                    console.log('Navigation successful');
+                    setNavigationError('Failed to change page: ' + (Object.values(errors)[0] || 'Unknown error.'));
+                    table.setPageIndex(registry.meta.current_page - 1);
                 },
             });
         },
     });
 
-    // Synchronize table's pageIndex with server-side current_page
     useEffect(() => {
         const newPageIndex = Math.max(0, registry.meta.current_page - 1);
         if (table.getState().pagination.pageIndex !== newPageIndex) {
             console.log('Syncing pageIndex:', { current: table.getState().pagination.pageIndex, new: newPageIndex });
             table.setPageIndex(newPageIndex);
         }
-    }, [registry.meta.current_page, table]);
-
-    // Debug table state
-    useEffect(() => {
-        console.log('Table state:', {
-            pageIndex: table.getState().pagination.pageIndex,
-            serverCurrentPage: registry.meta.current_page,
-            canPrevious: table.getCanPreviousPage(),
-            canNext: table.getCanNextPage(),
-            pageCount: table.getPageCount(),
-        });
     }, [registry.meta.current_page, table]);
 
     const handleSearchSubmit = useCallback(() => {
@@ -247,26 +255,37 @@ export default function Registry({ auth, registry }: Props) {
             setNavigationError('CSRF token is missing. Please refresh the page.');
             return;
         }
-        console.log('Navigating with search:', { page: 1, per_page: table.getState().pagination.pageSize, sort: table.getState().sorting[0]?.id || '', search: globalFilter });
-        router.visit(`/registry?page=1&per_page=${table.getState().pagination.pageSize}&sort=${table.getState().sorting[0]?.id || ''}:${table.getState().sorting[0]?.desc ? 'desc' : 'asc'}&search=${encodeURIComponent(globalFilter)}`, {
+        const sortParams = table.getState().sorting[0] ? `${table.getState().sorting[0].id}:${table.getState().sorting[0].desc ? 'desc' : 'asc'}` : '';
+        const queryParams = new URLSearchParams({
+            page: '1',
+            per_page: table.getState().pagination.pageSize.toString(),
+            sort: sortParams,
+            search: globalFilter,
+            ...(dateFrom && { date_from: dateFrom }),
+            ...(dateTo && { date_to: dateTo }),
+        });
+        const url = `/registry?${queryParams.toString()}`;
+        console.log('Navigating with search:', { url, globalFilter, dateFrom, dateTo });
+        router.visit(url, {
             preserveState: true,
             preserveScroll: true,
             headers: { 'X-CSRF-TOKEN': csrfToken },
             onError: (errors) => {
                 console.error('Navigation error (search):', errors);
-                setNavigationError('Failed to search: ' + (Object.values(errors)[0] || 'Unknown error. Check console for details.'));
+                setNavigationError('Failed to search: ' + (Object.values(errors)[0] || 'Unknown error.'));
             },
         });
-    }, [globalFilter, table]);
+    }, [globalFilter, dateFrom, dateTo, table]);
 
     useEffect(() => {
+        console.log('Search useEffect triggered:', { globalFilter, initialSearch, dateFrom, initialDateFrom, dateTo, initialDateTo });
         const timer = setTimeout(() => {
-            if (globalFilter !== initialSearch) {
+            if (globalFilter !== initialSearch || dateFrom !== initialDateFrom || dateTo !== initialDateTo) {
                 handleSearchSubmit();
             }
         }, 200);
         return () => clearTimeout(timer);
-    }, [globalFilter, initialSearch, handleSearchSubmit]);
+    }, [globalFilter, initialSearch, dateFrom, initialDateFrom, dateTo, initialDateTo, handleSearchSubmit]);
 
     const exportToCSV = async () => {
         try {
@@ -276,7 +295,14 @@ export default function Registry({ auth, registry }: Props) {
                 setExportError('CSRF token is missing. Please refresh the page.');
                 return;
             }
-            const response = await fetch(`/registry/export?search=${encodeURIComponent(globalFilter)}`, {
+            const queryParams = new URLSearchParams({
+                search: globalFilter,
+                ...(dateFrom && { date_from: dateFrom }),
+                ...(dateTo && { date_to: dateTo }),
+            });
+            const url = `/registry/export?${queryParams.toString()}`;
+            console.log('Exporting CSV:', { url, globalFilter, dateFrom, dateTo });
+            const response = await fetch(url, {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
@@ -310,12 +336,12 @@ export default function Registry({ auth, registry }: Props) {
             ];
 
             const csvRows = [
-                headers.join(','), // Header row
+                headers.join(','),
                 ...data.map((row) =>
                     headers
                         .map((key) => {
                             const value = row[key as keyof Registry] ?? 'N/A';
-                            return `"${String(value).replace(/"/g, '""')}"`; // Escape quotes for CSV
+                            return `"${String(value).replace(/"/g, '""')}"`;
                         })
                         .join(',')
                 ),
@@ -323,19 +349,35 @@ export default function Registry({ auth, registry }: Props) {
 
             const csvContent = csvRows.join('\n');
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
+            const urlObj = URL.createObjectURL(blob);
             const link = document.createElement('a');
-            link.setAttribute('href', url);
+            link.setAttribute('href', urlObj);
             link.setAttribute('download', `registry_export_${new Date().toISOString().split('T')[0]}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            URL.revokeObjectURL(url);
+            URL.revokeObjectURL(urlObj);
         } catch (error) {
             console.error('Export failed:', error);
             setExportError('Failed to export data. Please try again.');
             setShowAlert(true);
         }
+    };
+
+    const handleDateChange = (field: 'dateFrom' | 'dateTo', value: string) => {
+        console.log('Date changed:', { field, value });
+        if (field === 'dateFrom') {
+            setDateFrom(value);
+        } else {
+            setDateTo(value);
+        }
+    };
+
+    const clearDateFilters = () => {
+        console.log('Clearing date filters');
+        setDateFrom('');
+        setDateTo('');
+        handleSearchSubmit();
     };
 
     return (
@@ -367,13 +409,40 @@ export default function Registry({ auth, registry }: Props) {
                     </Alert>
                 )}
                 <div className="mb-4 flex items-center justify-between gap-2">
-                    <Input
-                        type="text"
-                        value={globalFilter}
-                        onChange={(e) => setGlobalFilter(e.target.value)}
-                        placeholder="Search registry..."
-                        className="w-full max-w-md rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 text-sm"
-                    />
+                    <div className="flex items-center gap-4">
+                        <Input
+                            type="text"
+                            value={globalFilter}
+                            onChange={(e) => setGlobalFilter(e.target.value)}
+                            placeholder="Search registry..."
+                            className="w-full max-w-md rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 text-sm"
+                        />
+                        <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2">
+                                <Input
+                                    type="date"
+                                    value={dateFrom}
+                                    onChange={(e) => handleDateChange('dateFrom', e.target.value)}
+                                    placeholder="Date From"
+                                    className="w-40 text-sm"
+                                />
+                                <Input
+                                    type="date"
+                                    value={dateTo}
+                                    onChange={(e) => handleDateChange('dateTo', e.target.value)}
+                                    placeholder="Date To"
+                                    className="w-40 text-sm"
+                                />
+                                <Button
+                                    variant="outline"
+                                    onClick={clearDateFilters}
+                                    className="text-sm"
+                                >
+                                    Clear Dates
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
                     <div className="flex items-center gap-2">
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -390,7 +459,7 @@ export default function Registry({ auth, registry }: Props) {
                                         key={column.id}
                                         checked={column.getIsVisible()}
                                         onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                                        disabled={column.id === 'actions'} // Prevent hiding actions column
+                                        disabled={column.id === 'actions'}
                                     >
                                         {column.columnDef.header as string}
                                     </DropdownMenuCheckboxItem>

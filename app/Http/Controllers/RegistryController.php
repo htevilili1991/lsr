@@ -8,6 +8,7 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class RegistryController extends Controller
 {
@@ -22,19 +23,41 @@ class RegistryController extends Controller
             $sort = $request->input('sort', 'id:asc');
             $search = $request->input('search', '');
             $filters = json_decode($request->input('filters', '[]'), true);
+            $dateFrom = $request->input('date_from', null);
+            $dateTo = $request->input('date_to', null);
+
+            Log::info('Registry index request', [
+                'search' => $search,
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo,
+                'per_page' => $perPage,
+                'page' => $page,
+                'sort' => $sort,
+                'filters' => $filters,
+            ]);
 
             $query = Registry::query();
 
             // Apply global search
             if ($search) {
+                $search = trim($search);
                 $query->where(function ($q) use ($search) {
-                    $q->where('surname', 'like', "%{$search}%")
-                        ->orWhere('given_name', 'like', "%{$search}%")
-                        ->orWhere('sex', 'like', "%{$search}%")
+                    $q->whereRaw('LOWER(surname) LIKE ?', ["%{$search}%"])
+                        ->orWhereRaw('LOWER(given_name) LIKE ?', ["%{$search}%"])
+                        ->orWhereRaw('LOWER(sex) LIKE ?', ["%{$search}%"])
                         ->orWhere('travel_date', 'like', "%{$search}%")
-                        ->orWhere('travel_reason', 'like', "%{$search}%")
-                        ->orWhere('destination_coming_from', 'like', "%{$search}%");
+                        ->orWhereRaw('LOWER(travel_reason) LIKE ?', ["%{$search}%"])
+                        ->orWhereRaw('LOWER(destination_coming_from) LIKE ?', ["%{$search}%"]);
                 });
+            }
+
+            // Apply date range filter
+            if ($dateFrom && $dateTo) {
+                $query->whereBetween('travel_date', [$dateFrom, $dateTo]);
+            } elseif ($dateFrom) {
+                $query->where('travel_date', '>=', $dateFrom);
+            } elseif ($dateTo) {
+                $query->where('travel_date', '<=', $dateTo);
             }
 
             // Apply column filters
@@ -47,7 +70,6 @@ class RegistryController extends Controller
             // Apply sorting
             if ($sort) {
                 [$sortColumn, $sortDirection] = explode(':', $sort);
-                // Validate sort column to prevent SQL injection
                 $validColumns = [
                     'surname', 'given_name', 'sex', 'travel_date',
                     'travel_reason', 'destination_coming_from', 'id'
@@ -55,12 +77,20 @@ class RegistryController extends Controller
                 if (in_array($sortColumn, $validColumns) && in_array($sortDirection, ['asc', 'desc'])) {
                     $query->orderBy($sortColumn, $sortDirection);
                 } else {
-                    $query->orderBy('id', 'asc'); // Fallback
+                    Log::warning('Invalid sort parameter', ['sort' => $sort]);
+                    $query->orderBy('id', 'asc');
                 }
             }
 
             // Paginate results
             $registry = $query->paginate($perPage, ['*'], 'page', $page);
+
+            // Log the query results
+            Log::info('Registry query results', [
+                'total' => $registry->total(),
+                'current_page' => $registry->currentPage(),
+                'items' => $registry->items(),
+            ]);
 
             return Inertia::render('registry/index', [
                 'registry' => [
@@ -78,7 +108,7 @@ class RegistryController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
-            Log::error('Error fetching registry data: ' . $e->getMessage());
+            Log::error('Error fetching registry data: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return Inertia::render('Error', [
                 'message' => 'Unable to load registry data.',
             ]);
@@ -94,19 +124,39 @@ class RegistryController extends Controller
             $sort = $request->input('sort', 'id:asc');
             $search = $request->input('search', '');
             $filters = json_decode($request->input('filters', '[]'), true);
+            $dateFrom = $request->input('date_from', null);
+            $dateTo = $request->input('date_to', null);
+
+            Log::info('Export request', [
+                'search' => $search,
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo,
+                'sort' => $sort,
+                'filters' => $filters,
+            ]);
 
             $query = Registry::query();
 
             // Apply global search
             if ($search) {
+                $search = trim($search);
                 $query->where(function ($q) use ($search) {
-                    $q->where('surname', 'like', "%{$search}%")
-                        ->orWhere('given_name', 'like', "%{$search}%")
-                        ->orWhere('sex', 'like', "%{$search}%")
+                    $q->whereRaw('LOWER(surname) LIKE ?', ["%{$search}%"])
+                        ->orWhereRaw('LOWER(given_name) LIKE ?', ["%{$search}%"])
+                        ->orWhereRaw('LOWER(sex) LIKE ?', ["%{$search}%"])
                         ->orWhere('travel_date', 'like', "%{$search}%")
-                        ->orWhere('travel_reason', 'like', "%{$search}%")
-                        ->orWhere('destination_coming_from', 'like', "%{$search}%");
+                        ->orWhereRaw('LOWER(travel_reason) LIKE ?', ["%{$search}%"])
+                        ->orWhereRaw('LOWER(destination_coming_from) LIKE ?', ["%{$search}%"]);
                 });
+            }
+
+            // Apply date range filter
+            if ($dateFrom && $dateTo) {
+                $query->whereBetween('travel_date', [$dateFrom, $dateTo]);
+            } elseif ($dateFrom) {
+                $query->where('travel_date', '>=', $dateFrom);
+            } elseif ($dateTo) {
+                $query->where('travel_date', '<=', $dateTo);
             }
 
             // Apply column filters
@@ -126,7 +176,7 @@ class RegistryController extends Controller
                 if (in_array($sortColumn, $validColumns) && in_array($sortDirection, ['asc', 'desc'])) {
                     $query->orderBy($sortColumn, $sortDirection);
                 } else {
-                    $query->orderBy('id', 'asc'); // Fallback
+                    $query->orderBy('id', 'asc');
                 }
             }
 

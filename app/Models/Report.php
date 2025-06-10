@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class ReportConfig extends Model
+class Report extends Model
 {
     protected $fillable = [
         'user_id',
