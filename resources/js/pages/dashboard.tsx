@@ -5,6 +5,8 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
+import Highcharts from 'highcharts';
+import HighchartsReact from 'highcharts-react-official';
 
 interface Registry {
     id: number;
@@ -31,17 +33,85 @@ interface Props {
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { label: 'Dashboard',
-        href: '/dashboard'
-    },
+    { label: 'Dashboard', href: '/dashboard' },
 ];
 
 export default function Dashboard({ auth, metrics, monthly_records, recent_records }: Props) {
+    // Prepare data for Highcharts
+    const chartOptions = {
+        chart: {
+            type: 'line',
+            height: 300,
+        },
+        title: {
+            text: null, // No title, as per original
+        },
+        xAxis: {
+            categories: Object.keys(monthly_records).map((month) => {
+                const [year, m] = month.split('-');
+                return new Date(parseInt(year), parseInt(m) - 1).toLocaleString('default', {
+                    month: 'short',
+                    year: 'numeric',
+                });
+            }),
+            title: {
+                text: 'Month',
+            },
+            gridLineWidth: 0,
+        },
+        yAxis: {
+            title: {
+                text: 'Number of Records',
+            },
+            min: 0,
+            gridLineColor: 'rgba(0, 0, 0, 0.1)',
+        },
+        series: [
+            {
+                name: 'Records',
+                data: Object.values(monthly_records),
+                color: '#3b82f6',
+                fillOpacity: 0.2,
+                lineWidth: 2,
+                marker: {
+                    fillColor: '#3b82f6',
+                    lineColor: '#ffffff',
+                    lineWidth: 2,
+                },
+            },
+        ],
+        plotOptions: {
+            line: {
+                linecap: 'round',
+                tension: 0.4, // Smooth curve, similar to Chart.js
+            },
+        },
+        legend: {
+            enabled: false, // Hide legend, as per original
+        },
+        credits: {
+            enabled: false, // Disable Highcharts watermark
+        },
+        responsive: {
+            rules: [
+                {
+                    condition: {
+                        maxWidth: 500,
+                    },
+                    chartOptions: {
+                        chart: {
+                            height: 200,
+                        },
+                    },
+                },
+            ],
+        },
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs} auth={auth}>
             <Head title="Dashboard" />
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                {/* Metrics Cards */}
                 <div className="grid auto-rows-min gap-4 md:grid-cols-3">
                     <Card>
                         <CardHeader className="pb-2">
@@ -75,7 +145,7 @@ export default function Dashboard({ auth, metrics, monthly_records, recent_recor
                         <CardTitle>Records Over Time</CardTitle>
                     </CardHeader>
                     <CardContent className="h-[300px]">
-
+                        <HighchartsReact highcharts={Highcharts} options={chartOptions} />
                     </CardContent>
                 </Card>
 
