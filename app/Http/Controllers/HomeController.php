@@ -12,6 +12,6 @@ class HomeController extends Controller
         if (Auth::check()) {
             return redirect()->route('dashboard');
         }
-        return Inertia::render('Auth/Login');
+        return Inertia::render('auth/Login');
     }
 }
