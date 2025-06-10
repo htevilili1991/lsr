@@ -1,12 +1,17 @@
 <?php
-use App\Http\Controllers\HomeController;
+
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\RegistryController;
 use App\Http\Controllers\AuditController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-Route::get('/', [HomeController::class, 'index'])->name('home');
+Route::get('/', function () {
+    if (Auth::check()) {
+        return redirect()->route('dashboard');
+    }
+    return Inertia::render('auth/login');
+})->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     // Dashboard route using DashboardController
