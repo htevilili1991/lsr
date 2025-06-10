@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\RegistryController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\AuditController;
@@ -14,9 +15,8 @@ Route::get('/', function () {
 })->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('dashboard', function () {
-        return Inertia::render('dashboard');
-    })->name('dashboard');
+    // Dashboard route using DashboardController
+    Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // Registry routes
     Route::prefix('registry')->group(function () {
