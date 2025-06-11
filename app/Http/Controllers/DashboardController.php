@@ -27,15 +27,19 @@ class DashboardController extends Controller
             // Unique nationalities
             $uniqueNationalities = Registry::distinct('nationality')->count('nationality');
 
+            // Determine database driver
+            $dbDriver = DB::connection()->getDriverName();
+            $dateFormatFunction = $dbDriver === 'pgsql' ? "TO_CHAR(travel_date, 'YYYY-MM')" : "DATE_FORMAT(travel_date, '%Y-%m')";
+
             // Monthly records by travel_date (last 12 months)
             $monthlyRecordsTravel = Registry::select(
-                DB::raw("DATE_FORMAT(travel_date, '%Y-%m') as month"),
+                DB::raw("{$dateFormatFunction} as month"),
                 DB::raw('COUNT(*) as count')
             )
                 ->whereNotNull('travel_date')
                 ->where('travel_date', '>=', Carbon::now()->subMonths(12))
-                ->groupBy('month')
-                ->orderBy('month', 'asc')
+                ->groupBy(DB::raw("{$dateFormatFunction}"))
+                ->orderBy(DB::raw("{$dateFormatFunction}"), 'asc')
                 ->get()
                 ->mapWithKeys(function ($item) {
                     return [$item->month => (int) $item->count];
@@ -110,6 +114,7 @@ class DashboardController extends Controller
                 'travel_reason_records' => $travelReasonRecords,
                 'sex_records' => $sexRecords,
                 'recent_records_count' => count($recentRecords),
+                'db_driver' => $dbDriver,
             ]);
 
             return Inertia::render('Dashboard', [
