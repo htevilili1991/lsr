@@ -1,7 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type User } from '@/types';
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -30,9 +30,7 @@ interface ChartData {
 }
 
 interface Props {
-    auth: {
-        user: User | null;
-    };
+    auth: { user: User | null };
     metrics: Metrics;
     monthly_records_travel: Record<string, number>;
     travel_reason_records: ChartData[];
@@ -41,63 +39,50 @@ interface Props {
     error?: string;
 }
 
-const breadcrumbs: BreadcrumbItem[] = [
-    { label: 'Dashboard', href: '/dashboard' },
-];
+const breadcrumbs: BreadcrumbItem[] = [{ label: 'Dashboard', href: '/dashboard' }];
 
-export default function Dashboard({ auth, metrics, monthly_records_travel, travel_reason_records, sex_records, recent_records, error }: Props) {
-    const [activeTab, setActiveTab] = useState('travel-date');
-
-    // Records Over Time (by travel_date)
+export default function Dashboard({
+                                      auth,
+                                      metrics,
+                                      monthly_records_travel,
+                                      travel_reason_records,
+                                      sex_records,
+                                      recent_records,
+                                      error,
+                                  }: Props) {
+    // Chart for Records Over Time (travel_date)
     const hasTravelData = Object.keys(monthly_records_travel).length > 0;
-    const travelChartOptions = {
-        chart: {
-            type: 'line',
-            height: 300,
-            backgroundColor: 'transparent',
-        },
-        title: {
-            text: null,
-        },
+    const travelChartOptions: Highcharts.Options = {
+        chart: { type: 'line', height: 300, backgroundColor: 'transparent' },
+        title: { text: null },
         xAxis: {
             categories: hasTravelData
                 ? Object.keys(monthly_records_travel).map((month) => {
-                      const [year, m] = month.split('-');
-                      return new Date(parseInt(year), parseInt(m) - 1).toLocaleString('default', {
-                          month: 'short',
-                          year: 'numeric',
-                      });
-                  })
+                    const [year, m] = month.split('-');
+                    return new Date(parseInt(year), parseInt(m) - 1).toLocaleString('default', {
+                        month: 'short',
+                        year: 'numeric',
+                    });
+                })
                 : [],
-            title: {
-                text: 'Month',
-                style: { color: '#6b7280', fontSize: '12px' },
-            },
+            title: { text: 'Month', style: { color: '#6b7280', fontSize: '12px' } },
             labels: { style: { color: '#6b7280', fontSize: '11px' } },
             gridLineWidth: 0,
         },
         yAxis: {
-            title: {
-                text: 'Number of Records',
-                style: { color: '#6b7280', fontSize: '12px' },
-            },
+            title: { text: 'Records', style: { color: '#6b7280', fontSize: '12px' } },
             min: 0,
             gridLineColor: 'rgba(0, 0, 0, 0.1)',
             labels: { style: { color: '#6b7280', fontSize: '11px' } },
         },
         series: [
             {
+                type: 'line',
                 name: 'Records',
                 data: hasTravelData ? Object.values(monthly_records_travel) : [],
                 color: '#3b82f6',
                 lineWidth: 2,
-                marker: {
-                    enabled: true,
-                    radius: 4,
-                    fillColor: '#3b82f6',
-                    lineColor: '#ffffff',
-                    lineWidth: 1,
-                },
+                marker: { enabled: true, radius: 4, fillColor: '#3b82f6', lineColor: '#ffffff', lineWidth: 1 },
                 states: { hover: { lineWidth: 3 } },
             },
         ],
@@ -116,29 +101,18 @@ export default function Dashboard({ auth, metrics, monthly_records_travel, trave
             },
         },
         responsive: {
-            rules: [
-                {
-                    condition: { maxWidth: 500 },
-                    chartOptions: {
-                        chart: { height: 200 },
-                        xAxis: { labels: { style: { fontSize: '10px' } } },
-                    },
-                },
-            ],
+            rules: [{ condition: { maxWidth: 500 }, chartOptions: { chart: { height: 200 }, xAxis: { labels: { style: { fontSize: '10px' } } } } }],
         },
     };
 
-    // Records by Travel Reason
+    // Chart for Records by Travel Reason
     const hasReasonData = travel_reason_records.length > 0;
-    const reasonChartOptions = {
-        chart: {
-            type: 'pie',
-            height: 300,
-            backgroundColor: 'transparent',
-        },
+    const reasonChartOptions: Highcharts.Options = {
+        chart: { type: 'pie', height: 300, backgroundColor: 'transparent' },
         title: { text: null },
         series: [
             {
+                type: 'pie',
                 name: 'Records',
                 data: hasReasonData ? travel_reason_records : [],
                 colors: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'],
@@ -148,11 +122,7 @@ export default function Dashboard({ auth, metrics, monthly_records_travel, trave
             pie: {
                 allowPointSelect: true,
                 cursor: 'pointer',
-                dataLabels: {
-                    enabled: true,
-                    format: '<b>{point.name}</b>: {point.percentage:.1f}%',
-                    style: { color: '#1f2937', fontSize: '12px' },
-                },
+                dataLabels: { enabled: true, format: '<b>{point.name}</b>: {point.percentage:.1f}%', style: { color: '#1f2937', fontSize: '12px' } },
                 showInLegend: false,
             },
         },
@@ -168,26 +138,18 @@ export default function Dashboard({ auth, metrics, monthly_records_travel, trave
             pointFormat: '<b>{point.name}</b>: {point.y} ({point.percentage:.1f}%)',
         },
         responsive: {
-            rules: [
-                {
-                    condition: { maxWidth: 500 },
-                    chartOptions: { chart: { height: 200 } },
-                },
-            ],
+            rules: [{ condition: { maxWidth: 500 }, chartOptions: { chart: { height: 200 } } }],
         },
     };
 
-    // Records by Sex
+    // Chart for Records by Sex
     const hasSexData = sex_records.length > 0;
-    const sexChartOptions = {
-        chart: {
-            type: 'pie',
-            height: 300,
-            backgroundColor: 'transparent',
-        },
+    const sexChartOptions: Highcharts.Options = {
+        chart: { type: 'pie', height: 300, backgroundColor: 'transparent' },
         title: { text: null },
         series: [
             {
+                type: 'pie',
                 name: 'Records',
                 data: hasSexData ? sex_records : [],
                 colors: ['#3b82f6', '#f59e0b', '#10b981'],
@@ -197,11 +159,7 @@ export default function Dashboard({ auth, metrics, monthly_records_travel, trave
             pie: {
                 allowPointSelect: true,
                 cursor: 'pointer',
-                dataLabels: {
-                    enabled: true,
-                    format: '<b>{point.name}</b>: {point.percentage:.1f}%',
-                    style: { color: '#1f2937', fontSize: '12px' },
-                },
+                dataLabels: { enabled: true, format: '<b>{point.name}</b>: {point.percentage:.1f}%', style: { color: '#1f2937', fontSize: '12px' } },
                 showInLegend: false,
             },
         },
@@ -217,25 +175,17 @@ export default function Dashboard({ auth, metrics, monthly_records_travel, trave
             pointFormat: '<b>{point.name}</b>: {point.y} ({point.percentage:.1f}%)',
         },
         responsive: {
-            rules: [
-                {
-                    condition: { maxWidth: 500 },
-                    chartOptions: { chart: { height: 200 } },
-                },
-            ],
+            rules: [{ condition: { maxWidth: 500 }, chartOptions: { chart: { height: 200 } } }],
         },
     };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs} auth={auth}>
             <Head title="Dashboard" />
-            <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                {error && (
-                    <div className="mb-4 p-4 bg-red-100 text-red-700 rounded">
-                        {error}
-                    </div>
-                )}
-                <div className="grid auto-rows-min gap-4 md:grid-cols-3">
+            <div className="flex flex-col gap-4 p-4">
+                {error && <div className="mb-4 rounded bg-red-100 p-4 text-red-700">{error}</div>}
+                {/* Metrics Cards */}
+                <div className="grid gap-4 md:grid-cols-3">
                     <Card>
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium text-gray-600">Total Records</CardTitle>
@@ -261,14 +211,13 @@ export default function Dashboard({ auth, metrics, monthly_records_travel, trave
                         </CardContent>
                     </Card>
                 </div>
-
-                {/* Tabbed Charts */}
-                <Card className="flex-1">
+                {/* Analytics Tabs */}
+                <Card>
                     <CardHeader>
                         <CardTitle>Analytics</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                        <Tabs defaultValue="travel-date" className="w-full">
                             <TabsList className="grid w-full grid-cols-3">
                                 <TabsTrigger value="travel-date">Records Over Time</TabsTrigger>
                                 <TabsTrigger value="travel-reason">By Travel Reason</TabsTrigger>
@@ -304,7 +253,6 @@ export default function Dashboard({ auth, metrics, monthly_records_travel, trave
                         </Tabs>
                     </CardContent>
                 </Card>
-
                 {/* Recent Records Table */}
                 <Card>
                     <CardHeader>
@@ -340,10 +288,7 @@ export default function Dashboard({ auth, metrics, monthly_records_travel, trave
                                                 {format(new Date(record.created_at), 'MMM dd, yyyy HH:mm')}
                                             </TableCell>
                                             <TableCell>
-                                                <Link
-                                                    href={`/registry/${record.id}`}
-                                                    className="text-blue-600 hover:underline"
-                                                >
+                                                <Link href={`/registry/${record.id}`} className="text-blue-600 hover:underline">
                                                     View
                                                 </Link>
                                             </TableCell>

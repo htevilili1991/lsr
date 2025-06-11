@@ -27,26 +27,22 @@ class DashboardController extends Controller
             // Unique nationalities
             $uniqueNationalities = Registry::distinct('nationality')->count('nationality');
 
-            // Determine database driver
-            $dbDriver = DB::connection()->getDriverName();
-            $dateFormatFunction = $dbDriver === 'pgsql' ? "TO_CHAR(travel_date, 'YYYY-MM')" : "DATE_FORMAT(travel_date, '%Y-%m')";
-
             // Monthly records by travel_date (last 12 months)
             $monthlyRecordsTravel = Registry::select(
-                DB::raw("{$dateFormatFunction} as month"),
+                DB::raw("TO_CHAR(travel_date, 'YYYY-MM') as month"),
                 DB::raw('COUNT(*) as count')
             )
                 ->whereNotNull('travel_date')
                 ->where('travel_date', '>=', Carbon::now()->subMonths(12))
-                ->groupBy(DB::raw("{$dateFormatFunction}"))
-                ->orderBy(DB::raw("{$dateFormatFunction}"), 'asc')
+                ->groupBy(DB::raw("TO_CHAR(travel_date, 'YYYY-MM')"))
+                ->orderByRaw("TO_CHAR(travel_date, 'YYYY-MM') asc")
                 ->get()
                 ->mapWithKeys(function ($item) {
                     return [$item->month => (int) $item->count];
                 })
                 ->toArray();
 
-            // Fill missing months with zero counts for travel_date
+            // Fill missing months with zero counts
             $monthsTravel = [];
             for ($i = 11; $i >= 0; $i--) {
                 $month = Carbon::now()->subMonths($i)->format('Y-m');
@@ -114,7 +110,6 @@ class DashboardController extends Controller
                 'travel_reason_records' => $travelReasonRecords,
                 'sex_records' => $sexRecords,
                 'recent_records_count' => count($recentRecords),
-                'db_driver' => $dbDriver,
             ]);
 
             return Inertia::render('Dashboard', [
