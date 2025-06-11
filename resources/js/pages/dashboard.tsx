@@ -1,13 +1,14 @@
 import { Head, Link } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type User } from '@/types';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
 import Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
+import AccessibilityModule from 'highcharts/modules/accessibility'; // Import as a module
 
 interface Registry {
     id: number;
@@ -50,11 +51,31 @@ export default function Dashboard({
                                       recent_records,
                                       error,
                                   }: Props) {
+    // Initialize Highcharts accessibility module
+    useEffect(() => {
+        if (typeof Highcharts === 'object' && typeof AccessibilityModule === 'function') {
+            AccessibilityModule(Highcharts);
+        }
+    }, []); // Empty dependency array ensures it runs once on mount
+
     // Chart for Records Over Time (travel_date)
     const hasTravelData = Object.keys(monthly_records_travel).length > 0;
     const travelChartOptions: Highcharts.Options = {
-        chart: { type: 'line', height: 300, backgroundColor: 'transparent' },
-        title: { text: null },
+        chart: {
+            type: 'line',
+            height: 300,
+            backgroundColor: 'transparent',
+        },
+        title: {
+            text: 'Records Over Time', // Accessible title for screen readers
+        },
+        accessibility: {
+            description: 'This chart displays the number of records over time, grouped by month.',
+            landmarkVerbosity: 'one',
+            keyboardNavigation: {
+                enabled: true,
+            },
+        },
         xAxis: {
             categories: hasTravelData
                 ? Object.keys(monthly_records_travel).map((month) => {
@@ -101,15 +122,33 @@ export default function Dashboard({
             },
         },
         responsive: {
-            rules: [{ condition: { maxWidth: 500 }, chartOptions: { chart: { height: 200 }, xAxis: { labels: { style: { fontSize: '10px' } } } } }],
+            rules: [
+                {
+                    condition: { maxWidth: 500 },
+                    chartOptions: { chart: { height: 200 }, xAxis: { labels: { style: { fontSize: '10px' } } } },
+                },
+            ],
         },
     };
 
     // Chart for Records by Travel Reason
     const hasReasonData = travel_reason_records.length > 0;
     const reasonChartOptions: Highcharts.Options = {
-        chart: { type: 'pie', height: 300, backgroundColor: 'transparent' },
-        title: { text: null },
+        chart: {
+            type: 'pie',
+            height: 300,
+            backgroundColor: 'transparent',
+        },
+        title: {
+            text: 'Records by Travel Reason', // Accessible title
+        },
+        accessibility: {
+            description: 'This pie chart shows the distribution of records by travel reason.',
+            landmarkVerbosity: 'one',
+            keyboardNavigation: {
+                enabled: true,
+            },
+        },
         series: [
             {
                 type: 'pie',
@@ -122,7 +161,11 @@ export default function Dashboard({
             pie: {
                 allowPointSelect: true,
                 cursor: 'pointer',
-                dataLabels: { enabled: true, format: '<b>{point.name}</b>: {point.percentage:.1f}%', style: { color: '#1f2937', fontSize: '12px' } },
+                dataLabels: {
+                    enabled: true,
+                    format: '<b>{point.name}</b>: {point.percentage:.1f}%',
+                    style: { color: '#1f2937', fontSize: '12px' },
+                },
                 showInLegend: false,
             },
         },
@@ -145,8 +188,21 @@ export default function Dashboard({
     // Chart for Records by Sex
     const hasSexData = sex_records.length > 0;
     const sexChartOptions: Highcharts.Options = {
-        chart: { type: 'pie', height: 300, backgroundColor: 'transparent' },
-        title: { text: null },
+        chart: {
+            type: 'pie',
+            height: 300,
+            backgroundColor: 'transparent',
+        },
+        title: {
+            text: 'Records by Sex', // Accessible title
+        },
+        accessibility: {
+            description: 'This pie chart shows the distribution of records by sex.',
+            landmarkVerbosity: 'one',
+            keyboardNavigation: {
+                enabled: true,
+            },
+        },
         series: [
             {
                 type: 'pie',
@@ -159,7 +215,11 @@ export default function Dashboard({
             pie: {
                 allowPointSelect: true,
                 cursor: 'pointer',
-                dataLabels: { enabled: true, format: '<b>{point.name}</b>: {point.percentage:.1f}%', style: { color: '#1f2937', fontSize: '12px' } },
+                dataLabels: {
+                    enabled: true,
+                    format: '<b>{point.name}</b>: {point.percentage:.1f}%',
+                    style: { color: '#1f2937', fontSize: '12px' },
+                },
                 showInLegend: false,
             },
         },
@@ -300,6 +360,6 @@ export default function Dashboard({
                     </CardContent>
                 </Card>
             </div>
-    0    </AppLayout>
+        </AppLayout>
     );
 }
