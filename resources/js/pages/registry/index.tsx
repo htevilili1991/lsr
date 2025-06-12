@@ -72,6 +72,7 @@ export default function Registry({ auth, registry }: Props) {
     const [showAlert, setShowAlert] = useState(!!flashMessage);
     const [exportError, setExportError] = useState<string | null>(null);
     const [navigationError, setNavigationError] = useState<string | null>(null);
+    const [currentPage, setCurrentPage] = useState(registry.meta.current_page);
 
     useEffect(() => {
         if (flashMessage || exportError || navigationError) {
@@ -175,7 +176,7 @@ export default function Registry({ auth, registry }: Props) {
         pageCount: registry.meta.last_page,
         initialState: {
             pagination: {
-                pageIndex: registry.meta.current_page - 1,
+                pageIndex: currentPage - 1,
                 pageSize: registry.meta.per_page,
             },
             columnVisibility: {
@@ -227,6 +228,7 @@ export default function Registry({ auth, registry }: Props) {
         },
         onPaginationChange: (updater) => {
             const newPagination = typeof updater === 'function' ? updater(table.getState().pagination) : updater;
+            if (newPagination.pageIndex + 1 === currentPage) return;
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
             if (!csrfToken) {
                 console.error('CSRF token missing during pagination');
@@ -242,28 +244,34 @@ export default function Registry({ auth, registry }: Props) {
                 ...(dateFrom && { date_from: dateFrom }),
                 ...(dateTo && { date_to: dateTo }),
             });
-            console.log('Navigating to page:', newPagination.pageIndex + 1, 'with params:', queryParams.toString()); // Debug log
+            console.log('Attempting to navigate to page:', newPagination.pageIndex + 1, 'with params:', queryParams.toString(), 'current state:', table.getState().pagination);
             const url = `/registry?${queryParams.toString()}`;
             router.visit(url, {
                 preserveState: true,
                 preserveScroll: true,
                 headers: { 'X-CSRF-TOKEN': csrfToken },
+                onSuccess: () => {
+                    console.log('Navigation succeeded to page:', newPagination.pageIndex + 1);
+                    setCurrentPage(newPagination.pageIndex + 1);
+                },
                 onError: (errors) => {
                     console.error('Navigation error (pagination):', errors);
                     setNavigationError('Failed to change page: ' + (Object.values(errors)[0] || 'Unknown error.'));
-                    table.setPageIndex(registry.meta.current_page - 1); // Revert on error
+                    table.setPageIndex(currentPage - 1);
                 },
+                onFinish: () => table.setPageIndex(newPagination.pageIndex),
             });
         },
     });
 
     useEffect(() => {
         const newPageIndex = Math.max(0, registry.meta.current_page - 1);
-        console.log('Syncing page index to:', newPageIndex + 1); // Debug log
-        if (table.getState().pagination.pageIndex !== newPageIndex) {
+        console.log('Syncing page index to:', newPageIndex + 1, 'with meta:', registry.meta, 'current state:', table.getState().pagination);
+        if (table.getState().pagination.pageIndex !== newPageIndex && currentPage !== registry.meta.current_page) {
             table.setPageIndex(newPageIndex);
+            setCurrentPage(registry.meta.current_page);
         }
-    }, [registry.meta.current_page, table]);
+    }, [registry.meta.current_page, currentPage, table]);
 
     const handleSearchSubmit = useCallback(() => {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
@@ -556,7 +564,23 @@ export default function Registry({ auth, registry }: Props) {
                             </div>
                             <div className="flex gap-2">
                                 <button
-                                    onClick={() => table.previousPage()}
+                                    onClick={() => {
+                                        table.previousPage();
+                                        const newPage = Math.max(1, table.getState().pagination.pageIndex);
+                                        const queryParams = new URLSearchParams({
+                                            page: newPage.toString(),
+                                            per_page: table.getState().pagination.pageSize.toString(),
+                                            sort: table.getState().sorting[0] ? `${table.getState().sorting[0].id}:${table.getState().sorting[0].desc ? 'desc' : 'asc'}` : '',
+                                            search: globalFilter,
+                                            ...(dateFrom && { date_from: dateFrom }),
+                                            ...(dateTo && { date_to: dateTo }),
+                                        });
+                                        router.visit(`/registry?${queryParams.toString()}`, {
+                                            preserveState: true,
+                                            preserveScroll: true,
+                                            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
+                                        });
+                                    }}
                                     disabled={!table.getCanPreviousPage()}
                                     className={`px-4 py-2 text-sm font-medium rounded-md ${
                                         table.getCanPreviousPage()
@@ -567,13 +591,37 @@ export default function Registry({ auth, registry }: Props) {
                                     Previous
                                 </button>
                                 <button
-                                    onClick={() => table.nextPage()}
+                                    onClick={() => {
+                                        const currentPageIndex = table.getState().pagination.pageIndex;
+                                        table.nextPage(); // Update internal state
+                                        const newPageIndex = table.getState().pagination.pageIndex; // Get updated index
+                                        const newPage = newPageIndex + 1; // Convert to 1-based page
+                                        console.log('Next clicked: currentPageIndex=', currentPageIndex, 'newPageIndex=', newPageIndex, 'newPage=', newPage);
+                                        const queryParams = new URLSearchParams({
+                                            page: newPage.toString(),
+                                            per_page: table.getState().pagination.pageSize.toString(),
+                                            sort: table.getState().sorting[0] ? `${table.getState().sorting[0].id}:${table.getState().sorting[0].desc ? 'desc' : 'asc'}` : '',
+                                            search: globalFilter,
+                                            ...(dateFrom && { date_from: dateFrom }),
+                                            ...(dateTo && { date_to: dateTo }),
+                                        });
+                                        router.visit(`/registry?${queryParams.toString()}`, {
+                                            preserveState: true,
+                                            preserveScroll: true,
+                                            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
+                                            onSuccess: () => {
+                                                console.log('Navigation succeeded to page:', newPage);
+                                                setCurrentPage(newPage);
+                                            },
+                                        });
+                                    }}
                                     disabled={!table.getCanNextPage()}
                                     className={`px-4 py-2 text-sm font-medium rounded-md ${
                                         table.getCanNextPage()
                                             ? 'bg-blue-500 text-white hover:bg-blue-600'
                                             : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                                     }`}
+                                    onClickCapture={() => console.log('Next button clicked, canNext:', table.getCanNextPage())}
                                 >
                                     Next
                                 </button>

@@ -106,6 +106,8 @@ class RegistryController extends Controller
                 'per_page' => $registry->perPage(),
                 'to' => $registry->lastItem(),
                 'from' => $registry->firstItem(),
+                'response_status' => http_response_code(),
+                'data_count' => count($registry->items()),
             ]);
 
             return Inertia::render('registry/index', [
