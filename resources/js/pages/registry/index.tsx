@@ -2,13 +2,14 @@ import { Head, Link, usePage, router } from '@inertiajs/react';
 import { useReactTable, getCoreRowModel, getSortedRowModel, getPaginationRowModel, type ColumnDef } from '@tanstack/react-table';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type User } from '@/types';
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { flexRender } from '@tanstack/react-table';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { DownloadIcon, ChevronDownIcon } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem } from '@/components/ui/dropdown-menu';
+import { debounce } from 'lodash';
 
 interface Registry {
     id: number;
@@ -72,7 +73,8 @@ export default function Registry({ auth, registry }: Props) {
     const [showAlert, setShowAlert] = useState(!!flashMessage);
     const [exportError, setExportError] = useState<string | null>(null);
     const [navigationError, setNavigationError] = useState<string | null>(null);
-    const [currentPage, setCurrentPage] = useState(registry.meta.current_page);
+    const [isLoading, setIsLoading] = useState(false);
+    const lastNavigatedPage = useRef(registry.meta.current_page);
 
     useEffect(() => {
         if (flashMessage || exportError || navigationError) {
@@ -95,6 +97,15 @@ export default function Registry({ auth, registry }: Props) {
         const cleanedValue = value.replace(/[^0-9-]/g, '').substring(0, 8);
         if (field === 'dateFrom') setDateFrom(cleanedValue);
         else setDateTo(cleanedValue);
+    };
+
+    const getCsrfToken = () => {
+        const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (!token) {
+            console.error('CSRF token missing');
+            setNavigationError('CSRF token is missing. Please refresh the page.');
+        }
+        return token || '';
     };
 
     const columns: ColumnDef<Registry>[] = React.useMemo(
@@ -172,13 +183,15 @@ export default function Registry({ auth, registry }: Props) {
         getPaginationRowModel: getPaginationRowModel(),
         manualPagination: true,
         manualSorting: true,
-        manualFiltering: true,
-        pageCount: registry.meta.last_page,
-        initialState: {
+        pageCount: registry.meta.last_page || 1,
+        state: {
             pagination: {
-                pageIndex: currentPage - 1,
+                pageIndex: registry.meta.current_page - 1,
                 pageSize: registry.meta.per_page,
             },
+            globalFilter,
+        },
+        initialState: {
             columnVisibility: {
                 nationality: false,
                 country_of_residence: false,
@@ -193,136 +206,145 @@ export default function Registry({ auth, registry }: Props) {
                 border_post: false,
             },
         },
-        state: {
-            globalFilter,
-            sorting: [],
-        },
         onGlobalFilterChange: setGlobalFilter,
-        onSortingChange: (updater) => {
+        onSortingChange: debounce((updater) => {
             const newSorting = typeof updater === 'function' ? updater(table.getState().sorting) : updater;
             const sortParams = newSorting.length > 0 ? `${newSorting[0].id}:${newSorting[0].desc ? 'desc' : 'asc'}` : '';
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-            if (!csrfToken) {
-                console.error('CSRF token missing during sorting');
-                setNavigationError('CSRF token is missing. Please refresh the page.');
-                return;
-            }
+            const csrfToken = getCsrfToken();
+            if (!csrfToken) return;
             const queryParams = new URLSearchParams({
-                page: (table.getState().pagination.pageIndex + 1).toString(),
+                page: '1',
                 per_page: table.getState().pagination.pageSize.toString(),
                 sort: sortParams,
                 search: globalFilter,
                 ...(dateFrom && { date_from: dateFrom }),
                 ...(dateTo && { date_to: dateTo }),
             });
-            const url = `/registry?${queryParams.toString()}`;
-            router.visit(url, {
+            console.log('Sorting navigation:', `/registry?${queryParams.toString()}`);
+            setIsLoading(true);
+            router.visit(`/registry?${queryParams.toString()}`, {
                 preserveState: true,
                 preserveScroll: true,
                 headers: { 'X-CSRF-TOKEN': csrfToken },
+                onSuccess: () => {
+                    lastNavigatedPage.current = 1;
+                    table.setPageIndex(0);
+                    setIsLoading(false);
+                },
                 onError: (errors) => {
                     console.error('Navigation error (sorting):', errors);
                     setNavigationError('Failed to sort: ' + (Object.values(errors)[0] || 'Unknown error.'));
+                    setIsLoading(false);
                 },
             });
-        },
-        onPaginationChange: (updater) => {
+        }, 300),
+        onPaginationChange: debounce((updater) => {
             const newPagination = typeof updater === 'function' ? updater(table.getState().pagination) : updater;
-            if (newPagination.pageIndex + 1 === currentPage) return;
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-            if (!csrfToken) {
-                console.error('CSRF token missing during pagination');
-                setNavigationError('CSRF token is missing. Please refresh the page.');
+            const newPageIndex = newPagination.pageIndex;
+            const newPageSize = newPagination.pageSize;
+            const resetPage = newPageSize !== table.getState().pagination.pageSize;
+            const targetPage = resetPage ? 1 : newPageIndex + 1;
+
+            if (targetPage === lastNavigatedPage.current) {
+                console.log('Skipping navigation: already on page', targetPage);
                 return;
             }
-            const sortParams = table.getState().sorting[0] ? `${table.getState().sorting[0].id}:${table.getState().sorting[0].desc ? 'desc' : 'asc'}` : '';
+
+            const csrfToken = getCsrfToken();
+            if (!csrfToken) return;
+
+            const sortParams = table.getState().sorting[0]
+                ? `${table.getState().sorting[0].id}:${table.getState().sorting[0].desc ? 'desc' : 'asc'}`
+                : '';
             const queryParams = new URLSearchParams({
-                page: (newPagination.pageIndex + 1).toString(),
-                per_page: newPagination.pageSize.toString(),
+                page: targetPage.toString(),
+                per_page: newPageSize.toString(),
                 sort: sortParams,
                 search: globalFilter,
                 ...(dateFrom && { date_from: dateFrom }),
                 ...(dateTo && { date_to: dateTo }),
             });
-            console.log('Attempting to navigate to page:', newPagination.pageIndex + 1, 'with params:', queryParams.toString(), 'current state:', table.getState().pagination);
-            const url = `/registry?${queryParams.toString()}`;
-            router.visit(url, {
+            console.log('Navigating to:', `/registry?${queryParams.toString()}`, 'New page:', targetPage, 'New pageSize:', newPageSize);
+            setIsLoading(true);
+            router.visit(`/registry?${queryParams.toString()}`, {
                 preserveState: true,
                 preserveScroll: true,
                 headers: { 'X-CSRF-TOKEN': csrfToken },
                 onSuccess: () => {
-                    console.log('Navigation succeeded to page:', newPagination.pageIndex + 1);
-                    setCurrentPage(newPagination.pageIndex + 1);
+                    console.log('Navigation succeeded to page:', targetPage);
+                    lastNavigatedPage.current = targetPage;
+                    table.setPageIndex(newPageIndex);
+                    table.setPageCount(registry.meta.last_page || 1);
+                    setIsLoading(false);
                 },
                 onError: (errors) => {
                     console.error('Navigation error (pagination):', errors);
                     setNavigationError('Failed to change page: ' + (Object.values(errors)[0] || 'Unknown error.'));
-                    table.setPageIndex(currentPage - 1);
+                    table.setPageIndex(lastNavigatedPage.current - 1);
+                    setIsLoading(false);
                 },
-                onFinish: () => table.setPageIndex(newPagination.pageIndex),
             });
-        },
+        }, 300),
     });
 
-    useEffect(() => {
-        const newPageIndex = Math.max(0, registry.meta.current_page - 1);
-        console.log('Syncing page index to:', newPageIndex + 1, 'with meta:', registry.meta, 'current state:', table.getState().pagination);
-        if (table.getState().pagination.pageIndex !== newPageIndex && currentPage !== registry.meta.current_page) {
-            table.setPageIndex(newPageIndex);
-            setCurrentPage(registry.meta.current_page);
-        }
-    }, [registry.meta.current_page, currentPage, table]);
+    const handleSearchSubmit = useCallback(
+        debounce((searchQuery: string) => {
+            const csrfToken = getCsrfToken();
+            if (!csrfToken) return;
+            const sortParams = table.getState().sorting[0]
+                ? `${table.getState().sorting[0].id}:${table.getState().sorting[0].desc ? 'desc' : 'asc'}`
+                : '';
+            const queryParams = new URLSearchParams({
+                page: '1',
+                per_page: table.getState().pagination.pageSize.toString(),
+                sort: sortParams,
+                search: searchQuery,
+                ...(dateFrom && { date_from: dateFrom }),
+                ...(dateTo && { date_to: dateTo }),
+            });
+            console.log('Search navigation:', `/registry?${queryParams.toString()}`, 'Search query:', searchQuery);
+            setIsLoading(true);
+            router.visit(`/registry?${queryParams.toString()}`, {
+                preserveState: true,
+                preserveScroll: true,
+                headers: { 'X-CSRF-TOKEN': csrfToken },
+                onSuccess: () => {
+                    lastNavigatedPage.current = 1;
+                    table.setPageIndex(0);
+                    setIsLoading(false);
+                },
+                onError: (errors) => {
+                    console.error('Navigation error (search):', errors);
+                    setNavigationError('Failed to search: ' + (Object.values(errors)[0] || 'Unknown error.'));
+                    setIsLoading(false);
+                },
+            });
+        }, 300),
+        [table, dateFrom, dateTo]
+    );
 
-    const handleSearchSubmit = useCallback(() => {
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-        if (!csrfToken) {
-            console.error('CSRF token missing during search');
-            setNavigationError('CSRF token is missing. Please refresh the page.');
-            return;
-        }
-        const sortParams = table.getState().sorting[0] ? `${table.getState().sorting[0].id}:${table.getState().sorting[0].desc ? 'desc' : 'asc'}` : '';
-        const queryParams = new URLSearchParams({
-            page: '1',
-            per_page: table.getState().pagination.pageSize.toString(),
-            sort: sortParams,
-            search: globalFilter,
-            ...(dateFrom && { date_from: dateFrom }),
-            ...(dateTo && { date_to: dateTo }),
-        });
-        const url = `/registry?${queryParams.toString()}`;
-        router.visit(url, {
-            preserveState: true,
-            preserveScroll: true,
-            headers: { 'X-CSRF-TOKEN': csrfToken },
-            onError: (errors) => {
-                console.error('Navigation error (search):', errors);
-                setNavigationError('Failed to search: ' + (Object.values(errors)[0] || 'Unknown error.'));
-            },
-        });
-    }, [globalFilter, dateFrom, dateTo, table]);
-
     useEffect(() => {
-        const timer = setTimeout(() => {
-            if (globalFilter !== initialSearch || dateFrom !== initialDateFrom || dateTo !== initialDateTo) {
-                handleSearchSubmit();
-            }
-        }, 200);
-        return () => clearTimeout(timer);
-    }, [globalFilter, initialSearch, dateFrom, initialDateFrom, dateTo, initialDateTo, handleSearchSubmit]);
+        handleSearchSubmit(globalFilter);
+    }, [globalFilter, dateFrom, dateTo, handleSearchSubmit]);
+
+    // Sync table state with server props
+    useEffect(() => {
+        console.log('Server meta:', registry.meta);
+        table.setPageIndex(registry.meta.current_page - 1);
+        table.setPageCount(registry.meta.last_page || 1);
+        lastNavigatedPage.current = registry.meta.current_page;
+    }, [registry.meta, table]);
 
     const exportToCSV = async () => {
         try {
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-            if (!csrfToken) {
-                console.error('CSRF token missing during export');
-                setExportError('CSRF token is missing. Please refresh the page.');
-                return;
-            }
+            const csrfToken = getCsrfToken();
+            if (!csrfToken) return;
             const queryParams = new URLSearchParams({
                 search: globalFilter,
                 ...(dateFrom && { date_from: dateFrom }),
                 ...(dateTo && { date_to: dateTo }),
             });
+            setIsLoading(true);
             const url = `/registry/export?${queryParams.toString()}`;
             const response = await fetch(url, {
                 method: 'GET',
@@ -366,23 +388,33 @@ export default function Registry({ auth, registry }: Props) {
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(urlObj);
+            setIsLoading(false);
         } catch (error) {
             console.error('Export failed:', error);
             setExportError('Failed to export data. Please try again.');
             setShowAlert(true);
+            setIsLoading(false);
         }
     };
 
     const clearDateFilters = () => {
         setDateFrom('');
         setDateTo('');
-        handleSearchSubmit();
+        handleSearchSubmit(globalFilter);
     };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs} auth={auth}>
             <Head title="Registry" />
             <div className="relative flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
+                {isLoading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-50 z-10">
+                        <svg className="animate-spin h-8 w-8 text-blue-500" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                    </div>
+                )}
                 {showAlert && (flashMessage || exportError || navigationError) && (
                     <Alert
                         variant={flash?.success ? 'default' : 'destructive'}
@@ -423,14 +455,14 @@ export default function Registry({ auth, registry }: Props) {
                                     value={dateFrom}
                                     onChange={(e) => handleDateChange('dateFrom', e.target.value)}
                                     placeholder="Date From (MM-DD-YY)"
-                                    className="w-45 text-sm"
+                                    className="w-50 text-sm"
                                 />
                                 <Input
                                     type="text"
                                     value={dateTo}
                                     onChange={(e) => handleDateChange('dateTo', e.target.value)}
                                     placeholder="Date To (MM-DD-YY)"
-                                    className="w-45 text-sm"
+                                    className="w-50 text-sm"
                                 />
                                 <Button
                                     variant="outline"
@@ -468,6 +500,7 @@ export default function Registry({ auth, registry }: Props) {
                         <Button
                             onClick={exportToCSV}
                             className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700"
+                            disabled={isLoading}
                         >
                             <DownloadIcon className="h-4 w-4 mr-2" />
                             Export to CSV
@@ -489,7 +522,7 @@ export default function Registry({ auth, registry }: Props) {
                                 d="M3 7h18M3 11h18m-9 4h9m-9 4h6"
                             />
                         </svg>
-                        <p className="mt-2 text-gray-500">No registry data available.</p>
+                        <p className="mt-2 text-sm text-gray-500">No registry data available.</p>
                     </div>
                 ) : (
                     <div className="border-sidebar-border/70 dark:border-sidebar-border overflow-x-auto rounded-xl border z-0">
@@ -510,11 +543,11 @@ export default function Registry({ auth, registry }: Props) {
                                                     header.getContext()
                                                 )}
                                             <span>
-                                                {{
-                                                    asc: ' 🔼',
-                                                    desc: ' 🔽',
-                                                }[header.column.getIsSorted() as string] ?? ''}
-                                            </span>
+                                                    {{
+                                                        asc: ' 🔼',
+                                                        desc: ' 🔽',
+                                                    }[header.column.getIsSorted() as string] ?? ''}
+                                                </span>
                                         </th>
                                     ))}
                                 </tr>
@@ -554,6 +587,7 @@ export default function Registry({ auth, registry }: Props) {
                                         table.setPageSize(Number(e.target.value));
                                     }}
                                     className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-1 text-sm"
+                                    disabled={isLoading}
                                 >
                                     {[10, 25, 50].map((pageSize) => (
                                         <option key={pageSize} value={pageSize}>
@@ -564,26 +598,10 @@ export default function Registry({ auth, registry }: Props) {
                             </div>
                             <div className="flex gap-2">
                                 <button
-                                    onClick={() => {
-                                        table.previousPage();
-                                        const newPage = Math.max(1, table.getState().pagination.pageIndex);
-                                        const queryParams = new URLSearchParams({
-                                            page: newPage.toString(),
-                                            per_page: table.getState().pagination.pageSize.toString(),
-                                            sort: table.getState().sorting[0] ? `${table.getState().sorting[0].id}:${table.getState().sorting[0].desc ? 'desc' : 'asc'}` : '',
-                                            search: globalFilter,
-                                            ...(dateFrom && { date_from: dateFrom }),
-                                            ...(dateTo && { date_to: dateTo }),
-                                        });
-                                        router.visit(`/registry?${queryParams.toString()}`, {
-                                            preserveState: true,
-                                            preserveScroll: true,
-                                            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
-                                        });
-                                    }}
-                                    disabled={!table.getCanPreviousPage()}
+                                    onClick={() => table.previousPage()}
+                                    disabled={!table.getCanPreviousPage() || isLoading}
                                     className={`px-4 py-2 text-sm font-medium rounded-md ${
-                                        table.getCanPreviousPage()
+                                        table.getCanPreviousPage() && !isLoading
                                             ? 'bg-blue-500 text-white hover:bg-blue-600'
                                             : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                                     }`}
@@ -591,37 +609,13 @@ export default function Registry({ auth, registry }: Props) {
                                     Previous
                                 </button>
                                 <button
-                                    onClick={() => {
-                                        const currentPageIndex = table.getState().pagination.pageIndex;
-                                        table.nextPage(); // Update internal state
-                                        const newPageIndex = table.getState().pagination.pageIndex; // Get updated index
-                                        const newPage = newPageIndex + 1; // Convert to 1-based page
-                                        console.log('Next clicked: currentPageIndex=', currentPageIndex, 'newPageIndex=', newPageIndex, 'newPage=', newPage);
-                                        const queryParams = new URLSearchParams({
-                                            page: newPage.toString(),
-                                            per_page: table.getState().pagination.pageSize.toString(),
-                                            sort: table.getState().sorting[0] ? `${table.getState().sorting[0].id}:${table.getState().sorting[0].desc ? 'desc' : 'asc'}` : '',
-                                            search: globalFilter,
-                                            ...(dateFrom && { date_from: dateFrom }),
-                                            ...(dateTo && { date_to: dateTo }),
-                                        });
-                                        router.visit(`/registry?${queryParams.toString()}`, {
-                                            preserveState: true,
-                                            preserveScroll: true,
-                                            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
-                                            onSuccess: () => {
-                                                console.log('Navigation succeeded to page:', newPage);
-                                                setCurrentPage(newPage);
-                                            },
-                                        });
-                                    }}
-                                    disabled={!table.getCanNextPage()}
+                                    onClick={() => table.nextPage()}
+                                    disabled={!table.getCanNextPage() || isLoading}
                                     className={`px-4 py-2 text-sm font-medium rounded-md ${
-                                        table.getCanNextPage()
+                                        table.getCanNextPage() && !isLoading
                                             ? 'bg-blue-500 text-white hover:bg-blue-600'
                                             : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                                     }`}
-                                    onClickCapture={() => console.log('Next button clicked, canNext:', table.getCanNextPage())}
                                 >
                                     Next
                                 </button>
