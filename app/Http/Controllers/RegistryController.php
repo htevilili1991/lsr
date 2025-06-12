@@ -8,7 +8,7 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\DB;
+use DateTime;
 
 class RegistryController extends Controller
 {
@@ -44,20 +44,32 @@ class RegistryController extends Controller
                 $query->where(function ($q) use ($search) {
                     $q->whereRaw('LOWER(surname) LIKE ?', ["%{$search}%"])
                         ->orWhereRaw('LOWER(given_name) LIKE ?', ["%{$search}%"])
+                        ->orWhereRaw('LOWER(nationality) LIKE ?', ["%{$search}%"])
                         ->orWhereRaw('LOWER(sex) LIKE ?', ["%{$search}%"])
                         ->orWhere('travel_date', 'like', "%{$search}%")
+                        ->orWhere('dob', 'like', "%{$search}%")
                         ->orWhereRaw('LOWER(travel_reason) LIKE ?', ["%{$search}%"])
-                        ->orWhereRaw('LOWER(destination_coming_from) LIKE ?', ["%{$search}%"]);
+                        ->orWhereRaw('LOWER(destination_coming_from) LIKE ?', ["%{$search}%"])
+                        ->orWhereRaw('CAST(national_id_number AS TEXT) LIKE ?', ["%{$search}%"]);
                 });
             }
 
-            // Apply date range filter
+            // Apply date range filter on both dob and travel_date
             if ($dateFrom && $dateTo) {
-                $query->whereBetween('travel_date', [$dateFrom, $dateTo]);
+                $query->where(function ($q) use ($dateFrom, $dateTo) {
+                    $q->whereBetween('dob', [$dateFrom, $dateTo])
+                        ->orWhereBetween('travel_date', [$dateFrom, $dateTo]);
+                });
             } elseif ($dateFrom) {
-                $query->where('travel_date', '>=', $dateFrom);
+                $query->where(function ($q) use ($dateFrom) {
+                    $q->where('dob', '>=', $dateFrom)
+                        ->orWhere('travel_date', '>=', $dateFrom);
+                });
             } elseif ($dateTo) {
-                $query->where('travel_date', '<=', $dateTo);
+                $query->where(function ($q) use ($dateTo) {
+                    $q->where('dob', '<=', $dateTo)
+                        ->orWhere('travel_date', '<=', $dateTo);
+                });
             }
 
             // Apply column filters
@@ -71,8 +83,8 @@ class RegistryController extends Controller
             if ($sort) {
                 [$sortColumn, $sortDirection] = explode(':', $sort);
                 $validColumns = [
-                    'surname', 'given_name', 'sex', 'travel_date',
-                    'travel_reason', 'destination_coming_from', 'id'
+                    'surname', 'given_name', 'nationality', 'national_id_number', 'sex', 'travel_date',
+                    'travel_reason', 'destination_coming_from', 'id', 'dob'
                 ];
                 if (in_array($sortColumn, $validColumns) && in_array($sortDirection, ['asc', 'desc'])) {
                     $query->orderBy($sortColumn, $sortDirection);
@@ -82,14 +94,18 @@ class RegistryController extends Controller
                 }
             }
 
+            // Log the raw query for debugging
+            Log::info('Raw query', ['sql' => $query->toSql(), 'bindings' => $query->getBindings()]);
+
             // Paginate results
             $registry = $query->paginate($perPage, ['*'], 'page', $page);
-
-            // Log the query results
-            Log::info('Registry query results', [
+            Log::info('Pagination details', [
                 'total' => $registry->total(),
+                'last_page' => $registry->lastPage(),
                 'current_page' => $registry->currentPage(),
-                'items' => $registry->items(),
+                'per_page' => $registry->perPage(),
+                'to' => $registry->lastItem(),
+                'from' => $registry->firstItem(),
             ]);
 
             return Inertia::render('registry/index', [
@@ -143,10 +159,12 @@ class RegistryController extends Controller
                 $query->where(function ($q) use ($search) {
                     $q->whereRaw('LOWER(surname) LIKE ?', ["%{$search}%"])
                         ->orWhereRaw('LOWER(given_name) LIKE ?', ["%{$search}%"])
+                        ->orWhereRaw('LOWER(nationality) LIKE ?', ["%{$search}%"])
                         ->orWhereRaw('LOWER(sex) LIKE ?', ["%{$search}%"])
                         ->orWhere('travel_date', 'like', "%{$search}%")
                         ->orWhereRaw('LOWER(travel_reason) LIKE ?', ["%{$search}%"])
-                        ->orWhereRaw('LOWER(destination_coming_from) LIKE ?', ["%{$search}%"]);
+                        ->orWhereRaw('LOWER(destination_coming_from) LIKE ?', ["%{$search}%"])
+                        ->orWhereRaw('CAST(national_id_number AS TEXT) LIKE ?', ["%{$search}%"]);
                 });
             }
 
@@ -170,7 +188,7 @@ class RegistryController extends Controller
             if ($sort) {
                 [$sortColumn, $sortDirection] = explode(':', $sort);
                 $validColumns = [
-                    'surname', 'given_name', 'sex', 'travel_date',
+                    'surname', 'given_name', 'nationality', 'national_id_number', 'sex', 'travel_date',
                     'travel_reason', 'destination_coming_from', 'id'
                 ];
                 if (in_array($sortColumn, $validColumns) && in_array($sortDirection, ['asc', 'desc'])) {
@@ -182,7 +200,7 @@ class RegistryController extends Controller
 
             // Fetch all matching records
             $data = $query->get([
-                'surname', 'given_name', 'nationality', 'country_of_residence',
+                'surname', 'given_name', 'nationality', 'country_of_residence', 'national_id_number',
                 'document_type', 'document_no', 'dob', 'age', 'sex', 'travel_date',
                 'direction', 'accommodation_address', 'note', 'travel_reason',
                 'border_post', 'destination_coming_from'
@@ -225,7 +243,37 @@ class RegistryController extends Controller
      */
     public function store(Request $request)
     {
-        // Your existing store method
+        try {
+            Log::info('Store request data', $request->all());
+            $validated = $request->validate([
+                'surname' => 'required|string|max:255',
+                'given_name' => 'required|string|max:255',
+                'nationality' => 'required|string|max:255',
+                'country_of_residence' => 'required|string|max:255',
+                'national_id_number' => 'nullable|integer',
+                'document_type' => 'required|string|max:255',
+                'document_no' => 'required|string|max:255|unique:registry,document_no',
+                'dob' => 'required|string|regex:/^\d{2}-\d{2}-\d{2}$/', // Validate MM-DD-YY
+                'age' => 'required|integer|min:0',
+                'sex' => 'required|string|max:50',
+                'travel_date' => 'required|string|regex:/^\d{2}-\d{2}-\d{2}$/', // Validate MM-DD-YY
+                'direction' => 'required|string|max:255',
+                'accommodation_address' => 'required|string|max:255',
+                'note' => 'nullable|string|max:1000',
+                'travel_reason' => 'required|string|max:255',
+                'border_post' => 'required|string|max:255',
+                'destination_coming_from' => 'required|string|max:255',
+            ]);
+            Log::info('Validated data', $validated);
+            $registry = Registry::create($validated);
+            Log::info('Registry record created', ['id' => $registry->id]);
+            return Redirect::route('registry.index')->with('success', 'Record created successfully.');
+        } catch (\Exception $e) {
+            Log::error('Error creating Registry record: ' . $e->getMessage());
+            return Inertia::render('Error', [
+                'message' => 'Unable to create registry record.',
+            ]);
+        }
     }
 
     /**
@@ -283,12 +331,13 @@ class RegistryController extends Controller
                 'given_name' => 'required|string|max:255',
                 'nationality' => 'required|string|max:255',
                 'country_of_residence' => 'required|string|max:255',
+                'national_id_number' => 'nullable|integer|unique:registry,national_id_number,' . ($registry->national_id_number ?: 'NULL'),
                 'document_type' => 'required|string|max:255',
-                'document_no' => 'required|string|max:255',
-                'dob' => 'required|date',
+                'document_no' => 'required|string|max:255|unique:registry,document_no,' . $registry->id,
+                'dob' => 'required|string|regex:/^\d{2}-\d{2}-\d{2}$/', // Validate MM-DD-YY
                 'age' => 'required|integer|min:0',
                 'sex' => 'required|string|max:50',
-                'travel_date' => 'required|date',
+                'travel_date' => 'required|string|regex:/^\d{2}-\d{2}-\d{2}$/', // Validate MM-DD-YY
                 'direction' => 'required|string|max:255',
                 'accommodation_address' => 'required|string|max:255',
                 'note' => 'nullable|string|max:1000',
@@ -364,7 +413,7 @@ class RegistryController extends Controller
 
             // Expected headers
             $expectedHeaders = [
-                'surname', 'given_name', 'nationality', 'country_of_residence',
+                'surname', 'given_name', 'nationality', 'country_of_residence', 'national_id_number',
                 'document_type', 'document_no', 'dob', 'age', 'sex', 'travel_date',
                 'direction', 'accommodation_address', 'note', 'travel_reason',
                 'border_post', 'destination_coming_from'
@@ -378,9 +427,21 @@ class RegistryController extends Controller
 
             $recordsCreated = 0;
             while (($row = fgetcsv($handle)) !== false) {
-                // Skip if document_no already exists
-                if (Registry::where('document_no', $row[5])->exists()) {
-                    Log::warning('Skipping duplicate document_no: ' . $row[5]);
+                // Handle national_id_number as nullable integer
+                $nationalIdNumber = trim($row[4] ?? '');
+                $nationalIdNumber = empty($nationalIdNumber) ? null : filter_var($nationalIdNumber, FILTER_VALIDATE_INT);
+                if (!empty($nationalIdNumber) && $nationalIdNumber === false) {
+                    Log::warning('Skipping row due to invalid national_id_number: ' . $row[4], ['row' => $row]);
+                    continue;
+                }
+
+                // Skip if national_id_number or document_no already exists (only check non-null national_id_number)
+                $existsCondition = Registry::where('document_no', $row[6] ?? '');
+                if ($nationalIdNumber !== null) {
+                    $existsCondition->orWhere('national_id_number', $nationalIdNumber);
+                }
+                if ($existsCondition->exists()) {
+                    Log::warning('Skipping duplicate national_id_number or document_no: ' . ($nationalIdNumber ?? 'null') . ' or ' . ($row[6] ?? ''));
                     continue;
                 }
 
@@ -391,18 +452,19 @@ class RegistryController extends Controller
                         'given_name' => $row[1] ?? '',
                         'nationality' => $row[2] ?? '',
                         'country_of_residence' => $row[3] ?? '',
-                        'document_type' => $row[4] ?? '',
-                        'document_no' => $row[5] ?? '',
-                        'dob' => !empty($row[6]) ? date('Y-m-d', strtotime(str_replace('/', '-', $row[6]))) : null,
-                        'age' => (int)($row[7] ?? 0),
-                        'sex' => $row[8] ?? '',
-                        'travel_date' => !empty($row[9]) ? date('Y-m-d', strtotime(str_replace('/', '-', $row[9]))) : null,
-                        'direction' => $row[10] ?? '',
-                        'accommodation_address' => $row[11] ?? '',
-                        'note' => !empty($row[12]) ? $row[12] : null,
-                        'travel_reason' => $row[13] ?? '',
-                        'border_post' => $row[14] ?? '',
-                        'destination_coming_from' => $row[15] ?? '',
+                        'national_id_number' => $nationalIdNumber,
+                        'document_type' => $row[5] ?? '',
+                        'document_no' => $row[6] ?? '',
+                        'dob' => $row[7] ?? '', // Handled by model mutator
+                        'age' => (int)($row[8] ?? 0),
+                        'sex' => $row[9] ?? '',
+                        'travel_date' => $row[10] ?? '', // Handled by model mutator
+                        'direction' => $row[11] ?? '',
+                        'accommodation_address' => $row[12] ?? '',
+                        'note' => !empty($row[13]) ? $row[13] : null,
+                        'travel_reason' => $row[14] ?? '',
+                        'border_post' => $row[15] ?? '',
+                        'destination_coming_from' => $row[16] ?? '',
                     ]);
                     $recordsCreated++;
                 } catch (\Exception $e) {

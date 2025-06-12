@@ -19,7 +19,7 @@ class DashboardController extends Controller
             // Total records
             $totalRecords = Registry::count();
 
-            // Records this month
+            // Records this month (based on created_at)
             $recordsThisMonth = Registry::whereMonth('created_at', Carbon::now()->month)
                 ->whereYear('created_at', Carbon::now()->year)
                 ->count();
@@ -29,13 +29,13 @@ class DashboardController extends Controller
 
             // Monthly records by travel_date (last 12 months)
             $monthlyRecordsTravel = Registry::select(
-                DB::raw("TO_CHAR(travel_date, 'YYYY-MM') as month"),
+                DB::raw("TO_CHAR(TO_DATE(travel_date, 'DD/MM/YYYY'), 'YYYY-MM') as month"),
                 DB::raw('COUNT(*) as count')
             )
                 ->whereNotNull('travel_date')
-                ->where('travel_date', '>=', Carbon::now()->subMonths(12))
-                ->groupBy(DB::raw("TO_CHAR(travel_date, 'YYYY-MM')"))
-                ->orderByRaw("TO_CHAR(travel_date, 'YYYY-MM') asc")
+                ->whereRaw("TO_DATE(travel_date, 'DD/MM/YYYY') >= ?", [Carbon::now()->subMonths(12)->toDateString()])
+                ->groupBy(DB::raw("TO_CHAR(TO_DATE(travel_date, 'DD/MM/YYYY'), 'YYYY-MM')"))
+                ->orderByRaw("TO_CHAR(TO_DATE(travel_date, 'DD/MM/YYYY'), 'YYYY-MM') ASC")
                 ->get()
                 ->mapWithKeys(function ($item) {
                     return [$item->month => (int) $item->count];
@@ -96,7 +96,7 @@ class DashboardController extends Controller
                         'surname' => $record->surname ?? 'N/A',
                         'given_name' => $record->given_name ?? 'N/A',
                         'nationality' => $record->nationality ?? 'N/A',
-                        'travel_date' => $record->travel_date ? Carbon::parse($record->travel_date)->toDateString() : null,
+                        'travel_date' => $record->travel_date ? Carbon::createFromFormat('d/m/Y', $record->travel_date)->toDateString() : null,
                         'created_at' => Carbon::parse($record->created_at)->toDateTimeString(),
                     ];
                 })

@@ -7,7 +7,7 @@ export interface Auth {
 
 export interface BreadcrumbItem {
     label: string;
-    href: string;
+    href: string | null;
 }
 
 export interface NavGroup {
@@ -48,6 +48,7 @@ export interface Registry {
     given_name: string;
     nationality: string;
     country_of_residence: string;
+    national_id_number: number;
     document_type: string;
     document_no: string;
     dob: string;
@@ -96,6 +97,7 @@ export interface RegistryAuditValues {
     given_name?: string;
     nationality?: string;
     country_of_residence?: string;
+    national_id_number: number;
     document_type?: string;
     document_no?: string;
     dob?: string;

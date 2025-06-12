@@ -16,6 +16,7 @@ interface Registry {
     given_name: string;
     nationality: string;
     country_of_residence: string;
+    national_id_number: number;
     document_type: string;
     document_no: string;
     dob: string;
@@ -73,12 +74,6 @@ export default function Registry({ auth, registry }: Props) {
     const [navigationError, setNavigationError] = useState<string | null>(null);
 
     useEffect(() => {
-        console.log('Current URL parameters:', {
-            search: initialSearch,
-            date_from: initialDateFrom,
-            date_to: initialDateTo,
-            url: url,
-        });
         if (flashMessage || exportError || navigationError) {
             setShowAlert(true);
             const timer = setTimeout(() => {
@@ -90,18 +85,40 @@ export default function Registry({ auth, registry }: Props) {
         }
     }, [flashMessage, exportError, navigationError]);
 
+    const formatDate = (dateStr: string | null): string => {
+        if (!dateStr) return 'N/A';
+        return dateStr.substring(0, 8);
+    };
+
+    const handleDateChange = (field: 'dateFrom' | 'dateTo', value: string) => {
+        const cleanedValue = value.replace(/[^0-9-]/g, '').substring(0, 8);
+        if (field === 'dateFrom') setDateFrom(cleanedValue);
+        else setDateTo(cleanedValue);
+    };
+
     const columns: ColumnDef<Registry>[] = React.useMemo(
         () => [
             { header: 'Surname', accessorKey: 'surname', enableSorting: true },
             { header: 'Given Name', accessorKey: 'given_name', enableSorting: true },
             { header: 'Nationality', accessorKey: 'nationality', enableSorting: true },
             { header: 'Country of Residence', accessorKey: 'country_of_residence', enableSorting: true },
+            { header: 'National ID Number', accessorKey: 'national_id_number', enableSorting: true },
             { header: 'Document Type', accessorKey: 'document_type', enableSorting: true },
             { header: 'Document Number', accessorKey: 'document_no', enableSorting: true },
-            { header: 'DoB', accessorKey: 'dob', enableSorting: true },
+            {
+                header: 'DoB',
+                accessorKey: 'dob',
+                enableSorting: true,
+                cell: ({ getValue }) => formatDate(getValue() as string),
+            },
             { header: 'Sex', accessorKey: 'sex', enableSorting: true },
             { header: 'Age', accessorKey: 'age', enableSorting: true },
-            { header: 'Travel Date', accessorKey: 'travel_date', enableSorting: true },
+            {
+                header: 'Travel Date',
+                accessorKey: 'travel_date',
+                enableSorting: true,
+                cell: ({ getValue }) => formatDate(getValue() as string),
+            },
             { header: 'Direction', accessorKey: 'direction', enableSorting: true },
             { header: 'Accommodation Address', accessorKey: 'accommodation_address', enableSorting: true },
             { header: 'Note', accessorKey: 'note', enableSorting: true },
@@ -164,6 +181,7 @@ export default function Registry({ auth, registry }: Props) {
             columnVisibility: {
                 nationality: false,
                 country_of_residence: false,
+                national_id_number: false,
                 document_type: false,
                 document_no: false,
                 dob: false,
@@ -197,7 +215,6 @@ export default function Registry({ auth, registry }: Props) {
                 ...(dateTo && { date_to: dateTo }),
             });
             const url = `/registry?${queryParams.toString()}`;
-            console.log('Navigating with sorting:', { url, globalFilter, dateFrom, dateTo });
             router.visit(url, {
                 preserveState: true,
                 preserveScroll: true,
@@ -225,8 +242,8 @@ export default function Registry({ auth, registry }: Props) {
                 ...(dateFrom && { date_from: dateFrom }),
                 ...(dateTo && { date_to: dateTo }),
             });
+            console.log('Navigating to page:', newPagination.pageIndex + 1, 'with params:', queryParams.toString()); // Debug log
             const url = `/registry?${queryParams.toString()}`;
-            console.log('Navigating with pagination:', { url, globalFilter, dateFrom, dateTo });
             router.visit(url, {
                 preserveState: true,
                 preserveScroll: true,
@@ -234,7 +251,7 @@ export default function Registry({ auth, registry }: Props) {
                 onError: (errors) => {
                     console.error('Navigation error (pagination):', errors);
                     setNavigationError('Failed to change page: ' + (Object.values(errors)[0] || 'Unknown error.'));
-                    table.setPageIndex(registry.meta.current_page - 1);
+                    table.setPageIndex(registry.meta.current_page - 1); // Revert on error
                 },
             });
         },
@@ -242,8 +259,8 @@ export default function Registry({ auth, registry }: Props) {
 
     useEffect(() => {
         const newPageIndex = Math.max(0, registry.meta.current_page - 1);
+        console.log('Syncing page index to:', newPageIndex + 1); // Debug log
         if (table.getState().pagination.pageIndex !== newPageIndex) {
-            console.log('Syncing pageIndex:', { current: table.getState().pagination.pageIndex, new: newPageIndex });
             table.setPageIndex(newPageIndex);
         }
     }, [registry.meta.current_page, table]);
@@ -265,7 +282,6 @@ export default function Registry({ auth, registry }: Props) {
             ...(dateTo && { date_to: dateTo }),
         });
         const url = `/registry?${queryParams.toString()}`;
-        console.log('Navigating with search:', { url, globalFilter, dateFrom, dateTo });
         router.visit(url, {
             preserveState: true,
             preserveScroll: true,
@@ -278,7 +294,6 @@ export default function Registry({ auth, registry }: Props) {
     }, [globalFilter, dateFrom, dateTo, table]);
 
     useEffect(() => {
-        console.log('Search useEffect triggered:', { globalFilter, initialSearch, dateFrom, initialDateFrom, dateTo, initialDateTo });
         const timer = setTimeout(() => {
             if (globalFilter !== initialSearch || dateFrom !== initialDateFrom || dateTo !== initialDateTo) {
                 handleSearchSubmit();
@@ -301,7 +316,6 @@ export default function Registry({ auth, registry }: Props) {
                 ...(dateTo && { date_to: dateTo }),
             });
             const url = `/registry/export?${queryParams.toString()}`;
-            console.log('Exporting CSV:', { url, globalFilter, dateFrom, dateTo });
             const response = await fetch(url, {
                 method: 'GET',
                 headers: {
@@ -317,22 +331,9 @@ export default function Registry({ auth, registry }: Props) {
             const { registry: { data } }: { registry: { data: Registry[] } } = await response.json();
 
             const headers = [
-                'surname',
-                'given_name',
-                'nationality',
-                'country_of_residence',
-                'document_type',
-                'document_no',
-                'dob',
-                'age',
-                'sex',
-                'travel_date',
-                'direction',
-                'accommodation_address',
-                'note',
-                'travel_reason',
-                'border_post',
-                'destination_coming_from',
+                'surname', 'given_name', 'nationality', 'country_of_residence', 'national_id_number',
+                'document_type', 'document_no', 'dob', 'age', 'sex', 'travel_date', 'direction',
+                'accommodation_address', 'note', 'travel_reason', 'border_post', 'destination_coming_from',
             ];
 
             const csvRows = [
@@ -364,17 +365,7 @@ export default function Registry({ auth, registry }: Props) {
         }
     };
 
-    const handleDateChange = (field: 'dateFrom' | 'dateTo', value: string) => {
-        console.log('Date changed:', { field, value });
-        if (field === 'dateFrom') {
-            setDateFrom(value);
-        } else {
-            setDateTo(value);
-        }
-    };
-
     const clearDateFilters = () => {
-        console.log('Clearing date filters');
         setDateFrom('');
         setDateTo('');
         handleSearchSubmit();
@@ -420,17 +411,17 @@ export default function Registry({ auth, registry }: Props) {
                         <div className="flex flex-col gap-1">
                             <div className="flex items-center gap-2">
                                 <Input
-                                    type="date"
+                                    type="text"
                                     value={dateFrom}
                                     onChange={(e) => handleDateChange('dateFrom', e.target.value)}
-                                    placeholder="Date From"
+                                    placeholder="Date From (MM-DD-YY)"
                                     className="w-40 text-sm"
                                 />
                                 <Input
-                                    type="date"
+                                    type="text"
                                     value={dateTo}
                                     onChange={(e) => handleDateChange('dateTo', e.target.value)}
-                                    placeholder="Date To"
+                                    placeholder="Date To (MM-DD-YY)"
                                     className="w-40 text-sm"
                                 />
                                 <Button
@@ -547,7 +538,7 @@ export default function Registry({ auth, registry }: Props) {
                             <div className="flex items-center gap-2">
                                 <span className="text-sm text-gray-700">
                                     Page {table.getState().pagination.pageIndex + 1} of{' '}
-                                    {table.getPageCount()}
+                                    {registry.meta.last_page || 1}
                                 </span>
                                 <select
                                     value={table.getState().pagination.pageSize}
