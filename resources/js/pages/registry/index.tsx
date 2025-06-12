@@ -423,14 +423,14 @@ export default function Registry({ auth, registry }: Props) {
                                     value={dateFrom}
                                     onChange={(e) => handleDateChange('dateFrom', e.target.value)}
                                     placeholder="Date From (MM-DD-YY)"
-                                    className="w-40 text-sm"
+                                    className="w-45 text-sm"
                                 />
                                 <Input
                                     type="text"
                                     value={dateTo}
                                     onChange={(e) => handleDateChange('dateTo', e.target.value)}
                                     placeholder="Date To (MM-DD-YY)"
-                                    className="w-40 text-sm"
+                                    className="w-45 text-sm"
                                 />
                                 <Button
                                     variant="outline"
