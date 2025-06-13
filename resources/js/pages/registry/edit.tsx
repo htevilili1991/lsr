@@ -10,6 +10,7 @@ interface Registry {
     given_name: string;
     nationality: string;
     country_of_residence: string;
+    national_id_number: number;
     document_type: string;
     document_no: string;
     dob: string;
@@ -34,11 +35,11 @@ interface Props {
 // Breadcrumbs
 const breadcrumbs: BreadcrumbItem[] = [
     {
-        title: 'Registry',
+        label: 'Registry',
         href: '/registry',
     },
     {
-        title: 'Edit',
+        label: 'Edit',
         href: null,
     },
 ];
@@ -66,6 +67,18 @@ export default function Edit({ auth, registry }: Props) {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         put(`/registry/${registry.id}`);
+    };
+
+    // Validate and format MM-DD-YY input
+    const handleDateChange = (field: 'dob' | 'travel_date', value: string) => {
+        // Remove any non-digit and non-hyphen characters and enforce MM-DD-YY format
+        const cleanedValue = value.replace(/[^0-9-]/g, '');
+        if (cleanedValue.length <= 8) {
+            setData(field, cleanedValue);
+        } else {
+            // Truncate to first 8 characters if longer
+            setData(field, cleanedValue.substring(0, 8));
+        }
     };
 
     return (
@@ -159,13 +172,14 @@ export default function Edit({ auth, registry }: Props) {
                         </div>
                         <div>
                             <label htmlFor="dob" className="block text-sm font-medium text-gray-700">
-                                Date of Birth
+                                Date of Birth (MM-DD-YY)
                             </label>
                             <input
-                                type="date"
+                                type="text"
                                 id="dob"
                                 value={data.dob}
-                                onChange={e => setData('dob', e.target.value)}
+                                onChange={e => handleDateChange('dob', e.target.value)}
+                                placeholder="MM-DD-YY"
                                 className="mt-1 block w-full h-10 px-3 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                             />
                             {errors.dob && <p className="mt-1 text-sm text-red-600">{errors.dob}</p>}
@@ -198,13 +212,14 @@ export default function Edit({ auth, registry }: Props) {
                         </div>
                         <div>
                             <label htmlFor="travel_date" className="block text-sm font-medium text-gray-700">
-                                Travel Date
+                                Travel Date (MM-DD-YY)
                             </label>
                             <input
-                                type="date"
+                                type="text"
                                 id="travel_date"
                                 value={data.travel_date}
-                                onChange={e => setData('travel_date', e.target.value)}
+                                onChange={e => handleDateChange('travel_date', e.target.value)}
+                                placeholder="MM-DD-YY"
                                 className="mt-1 block w-full h-10 px-3 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                             />
                             {errors.travel_date && <p className="mt-1 text-sm text-red-600">{errors.travel_date}</p>}

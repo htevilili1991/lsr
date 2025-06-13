@@ -6,9 +6,6 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('registry', function (Blueprint $table) {
@@ -17,12 +14,13 @@ return new class extends Migration
             $table->string('given_name');
             $table->string('nationality');
             $table->string('country_of_residence');
+            $table->integer('national_id_number')->unique;
             $table->string('document_type');
             $table->string('document_no');
             $table->string('dob');
             $table->integer('age');
             $table->string('sex');
-            $table->string('travel_date');
+            $table->string('travel_date')->nullable();
             $table->string('direction');
             $table->string('accommodation_address');
             $table->string('note')->nullable();
@@ -33,9 +31,6 @@ return new class extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('registry');

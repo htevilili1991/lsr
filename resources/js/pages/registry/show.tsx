@@ -10,6 +10,7 @@ interface Registry {
     given_name: string;
     nationality: string;
     country_of_residence: string;
+    national_id_number: number;
     document_type: string;
     document_no: string;
     dob: string;
@@ -34,16 +35,23 @@ interface Props {
 // Breadcrumbs
 const breadcrumbs: BreadcrumbItem[] = [
     {
-        title: 'Registry',
+        label: 'Registry',
         href: '/registry',
     },
     {
-        title: 'View',
+        label: 'View',
         href: null,
     },
 ];
 
 export default function Show({ auth, registry }: Props) {
+    // Helper function to ensure MM-DD-YY format (first 8 characters)
+    const formatDate = (dateStr: string | null): string => {
+        if (!dateStr) return 'N/A';
+        // Extract first 8 characters (MM-DD-YY) as fallback
+        return dateStr.substring(0, 10);
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs} auth={auth}>
             <Head title={`Registry - ${registry.surname} ${registry.given_name}`} />
@@ -70,6 +78,10 @@ export default function Show({ auth, registry }: Props) {
                             <dd className="mt-1 text-sm text-gray-900">{registry.country_of_residence}</dd>
                         </div>
                         <div>
+                            <dt className="text-sm font-medium text-gray-500">National ID Number</dt>
+                            <dd className="mt-1 text-sm text-gray-900">{registry.national_id_number}</dd>
+                        </div>
+                        <div>
                             <dt className="text-sm font-medium text-gray-500">Document Type</dt>
                             <dd className="mt-1 text-sm text-gray-900">{registry.document_type}</dd>
                         </div>
@@ -79,7 +91,7 @@ export default function Show({ auth, registry }: Props) {
                         </div>
                         <div>
                             <dt className="text-sm font-medium text-gray-500">Date of Birth</dt>
-                            <dd className="mt-1 text-sm text-gray-900">{registry.dob}</dd>
+                            <dd className="mt-1 text-sm text-gray-900">{formatDate(registry.dob)}</dd>
                         </div>
                         <div>
                             <dt className="text-sm font-medium text-gray-500">Age</dt>
@@ -91,7 +103,7 @@ export default function Show({ auth, registry }: Props) {
                         </div>
                         <div>
                             <dt className="text-sm font-medium text-gray-500">Travel Date</dt>
-                            <dd className="mt-1 text-sm text-gray-900">{registry.travel_date}</dd>
+                            <dd className="mt-1 text-sm text-gray-900">{formatDate(registry.travel_date)}</dd>
                         </div>
                         <div>
                             <dt className="text-sm font-medium text-gray-500">Direction</dt>
